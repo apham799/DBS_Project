@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Range Report · Project Proposal</title>
+  <meta name="description" content="Range Report: know what's actually usable at your Chicago practice spot before you drive, from golfers who were just there.">
+  <style>
+    :root {
+      --ink: #1d2a22;
+      --muted: #5b6b61;
+      --line: #dfe5e0;
+      --green: #2f6b45;
+      --tint: #f3f7f4;
+      --paper: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+    header { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+    .kicker { color: var(--muted); font-size: 14px; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 8px; }
+    h1 { font-size: 40px; line-height: 1.15; margin: 0 0 12px; }
+    .oneliner { font-size: 21px; line-height: 1.45; margin: 0; }
+    h2 { font-size: 24px; margin: 44px 0 12px; }
+    h3 { font-size: 18px; margin: 24px 0 6px; }
+    p, ul, ol { margin: 0 0 14px; }
+    li { margin-bottom: 6px; }
+    .muted { color: var(--muted); }
+    blockquote {
+      margin: 0 0 14px;
+      padding: 10px 16px;
+      border-left: 3px solid var(--green);
+      background: var(--tint);
+    }
+    blockquote p { margin: 0; }
+    .who { font-size: 15px; color: var(--muted); margin: 0 0 4px; }
+    .loop {
+      list-style: none; padding: 16px 18px; margin: 0 0 14px;
+      background: var(--tint); border-radius: 8px;
+    }
+    .loop li::before { content: "→ "; color: var(--green); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 16px; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); }
+    th { font-size: 14px; color: var(--muted); font-weight: 600; }
+    td:first-child { white-space: nowrap; font-weight: 600; padding-right: 16px; }
+    .metric { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
+    .metric div { flex: 1 1 200px; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+    .metric strong { display: block; font-size: 26px; color: var(--green); }
+    footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    @media (max-width: 560px) {
+      h1 { font-size: 32px; }
+      .oneliner { font-size: 19px; }
+      td:first-child { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+<main>
+
+  <header>
+    <p class="kicker">Design, Build, Ship · Project Proposal</p>
+    <h1>Range Report</h1>
+    <p class="oneliner">For Chicago golfers who practice at the same few places: know what's actually open, usable and crowded before you drive, from golfers who were just there.</p>
+  </header>
+
+  <h2>The problem</h2>
+  <p>I went to Harborside to practice my short game and asked if they were open. They were, but because it was the off-season, the short-game area was basically closed and not being maintained as well as it could've/should have been. I ended up using the range and putting green instead. It wasn't a wasted trip, but it wasn't the practice I came for.</p>
+  <p>Published hours and bookings say whether a place is open. They don't say whether the part you need is usable, whether the range is mats only, or whether there's a wait. Today golfers find that out by texting someone who was just there.</p>
+
+  <h2>My users, and what they told me</h2>
+  <p>I interviewed three friends who golfed about the last time they practiced, before telling them about the idea.</p>
+
+  <p class="who">A casual golfer who practices weekly at Harborside</p>
+  <blockquote><p>"I drove over and found out the range was closed for maintenance, which was posted on their website, but I hadn't checked that day and it was mildly difficult to find when I did look. I didn't have time to drive somewhere else, so I just went home and practiced putting on my mat."</p></blockquote>
+  <blockquote><p>"A friend texted me after going to another range and said it was packed after work which is when I'd normally go."</p></blockquote>
+
+  <p class="who">A student who switches between Harborside, a simulator and putting at home</p>
+  <blockquote><p>"I once went to an outdoor range and found a long wait. I'd expected to walk right in, but now looking back not too sure what I was expecting. I waited for a little while, then left because I was hungry and had dinner plans. I booked a simulator for the next day instead."</p></blockquote>
+
+  <p class="who">A former competitive golfer, now in New York</p>
+  <blockquote><p>"I also texted a guy who plays there often to ask how the course was playing. He said it had been wet, so I made adjustments mentally for what to expect."</p></blockquote>
+
+  <h3>What I learned</h3>
+  <ul>
+    <li><strong>"Open" wasn't the whole story, every time.</strong> A closed short-game area, a maintenance closure, a long wait, slow play.</li>
+    <li><strong>Everyone already gets the real picture from a person.</strong> A text, a group chat, a call to a regular. It works, but it only reaches one person, and only if you know someone who was there.</li>
+    <li><strong>Most golfers go back to the same place.</strong> Even knowing about the short-game area for my situation, I'd have gone to Harborside anyway as it's the only grass range near me with no upcharge. So the point isn't necessarily to send people somewhere else. It's to know what to expect and plan for it.</li>
+  </ul>
+
+  <h2>How it works</h2>
+  <ol class="loop">
+    <li>Follow the places you practice.</li>
+    <li>Before you leave, see each place's status: open or closed, which areas are usable, how busy, weather now, and how old the latest report is.</li>
+    <li>After you practice, log your session for yourself, plus three taps on conditions: open, areas usable, how busy.</li>
+    <li>Your log stays private. The conditions go into that place's feed for everyone, and every report is kept.</li>
+  </ol>
+  <p>Posting has to be faster than texting a friend. The reason to post is your own log: like Strava, you record it for yourself, and the shared part comes along with it.</p>
+  <p>Places at launch: Diversey, Harborside, Jackson Park, Cog Hill, PGA Tour Superstore - Lincoln Park, Five Iron - Bucktown and PARennial. Walk-in ranges get the full report. Simulators, where a booking already guarantees a bay, get a shorter one.</p>
+
+  <h2>Focus: Systems</h2>
+  <p>I feel like a system-centric app gives golfers the most benefit. Golfers tend to be traditional/bland/boring about styling, so they may not appreciate or even notice nice design choices if the app isn't functional first. Even if the design isn't great, they'll still use it if it's useful.</p>
+  <p>Going deep on Systems means:</p>
+  <ul>
+    <li><strong>Data model:</strong> places → areas (range, putting, chipping, bunker, bays) → reports. Reports are never edited or deleted. Practice logs are private through row-level security; reports are public.</li>
+    <li><strong>Combined status:</strong> each area's status comes from its latest report, adjusted for how old it is, combined with published hours, seasonal rules and live weather.</li>
+    <li><strong>Background work:</strong> a scheduled weather worker now, and a job that turns report history into patterns ("busy most weekday evenings") in v2.</li>
+    <li><strong>Live updates:</strong> a new report at a place you follow shows up without a refresh.</li>
+  </ul>
+
+  <h2>Roadmap</h2>
+  <table>
+    <thead><tr><th>When</th><th>What I'll build</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Nov 10–17<br>v1</td>
+        <td>Combined status logic and its tests first (the riskiest part). Data model and RLS. Places seeded with checked hours. Sign-in plus a guest view. Post a report with a private log. Place page with status, recent reports, weather and a directions link. Follow a place, with live updates. A "Did the reports change anything?" question when logging.<br><span class="muted">Done when my friends and I can sign up, post and see each other's reports.</span></td>
+      </tr>
+      <tr>
+        <td>Nov 17–24</td>
+        <td>Real use. Fix what my users run into. The Bucket List practice plan adjusts to the latest report (chipping closed → a range and putting plan). Separate report forms for walk-in ranges and simulators.</td>
+      </tr>
+      <tr>
+        <td>Nov 24–Dec 1<br>v2 at the fair</td>
+        <td>Patterns from report history. A map of places with their current status. My practice log history. Follow-up conversations with users.</td>
+      </tr>
+      <tr>
+        <td>Leaving out</td>
+        <td>Round logging, badges and the bucket list from earlier assignments. Push or email alerts. Photos. Every range in Chicago. Booking integration. Other cities. Season-to-season history on screen (the data is kept, so it can come later).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>How I'll know it works</h3>
+  <div class="metric">
+    <div><strong>10–12</strong> reports by Dec 1, from 3 people, at least 6 not from me</div>
+    <div><strong>3</strong> times someone changed a decision because of a report</div>
+  </div>
+
+  <h2>Tech stack</h2>
+  <table>
+    <thead><tr><th>Tool</th><th>Why it fits</th></tr></thead>
+    <tbody>
+      <tr><td>Next.js 16, Tailwind 4, Vercel</td><td>What I used in Assignments 3–5, so no time lost learning a new framework in a one-week v1.</td></tr>
+      <tr><td>Clerk</td><td>Anyone can read reports as a guest, but posting needs an account, so every report has a real person behind it.</td></tr>
+      <tr><td>Supabase Postgres + RLS</td><td>Reports are public, logs are private, and the database enforces it.</td></tr>
+      <tr><td>Supabase Realtime</td><td>New reports appear live on places you follow.</td></tr>
+      <tr><td>Supabase Edge Functions + Cron</td><td>The weather worker now, the patterns job in v2.</td></tr>
+      <tr><td>Open-Meteo</td><td>Weather at each place. Free, no key, already working in Assignment 5.</td></tr>
+      <tr><td>Leaflet + OpenStreetMap</td><td>The v2 map. Free, no key, no billing account.</td></tr>
+      <tr><td>Unit tests + Playwright</td><td>The status logic gets the most tests: fresh, old, conflicting and missing reports. A two-user test checks that logs stay private.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>MCP server:</strong> Supabase MCP, for migrations, checking RLS policies and reading logs.<br>
+  <strong>CLIs:</strong> Supabase CLI (migrations, functions), Clerk CLI (test users), Vercel CLI (deploys), gh (repo).</p>
+  <p class="muted">Every service stays on its free tier, with usage limits and alerts set where offered.</p>
+
+  <footer>Design, Build, Ship · MPCS 51238 · Autumn 2026</footer>
+
+</main>
+</body>
+</html>
