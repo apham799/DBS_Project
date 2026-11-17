@@ -4,11 +4,13 @@ import { Show } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FollowButton } from "@/components/place-card";
-import { AreaTile, crowdWord, Legend } from "@/components/status";
+import { AreaTile, crowdWord, HoursBadge, Legend, NoDataIcon, Progress } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById } from "@/data/places";
 import { ageLabel, placeStatus } from "@/lib/status";
+import { MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
+import { useAiSummary } from "@/lib/use-ai-summary";
 import { useFollows } from "@/lib/use-follows";
 import { useReports } from "@/lib/use-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
@@ -16,13 +18,90 @@ import { useNow, useWeather } from "@/lib/use-weather";
 export const POSTED_KEY = "range-report:posted";
 
 const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", minute: "2-digit" });
-const conditionWord = { good: "good", limited: "limited", closed: "closed" } as const;
 
-function summarize(place: Place, r: Report): string {
-  if (!r.placeOpen) return "Closed when they got there";
-  const parts = place.areas.filter((a) => r.areas[a.id]).map((a) => `${a.label}: ${conditionWord[r.areas[a.id]]}`);
-  if (r.crowd) parts.push(crowdWord[r.crowd]);
-  return parts.length ? parts.join(" · ") : "Open";
+// Where to post from this page: the form if signed in, sign-in first if not.
+// There's exactly one on the page, in the summary card (both versions of it).
+function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId: string; size?: "sm" | "lg"; label?: string }) {
+  return (
+    <>
+      <Show when="signed-in">
+        <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
+      </Show>
+      <Show when="signed-out">
+        <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${placeId}/report`)}`} size={size}>Sign in to post a report</ButtonLink>
+      </Show>
+    </>
+  );
+}
+
+// "What golfers say": the rule-based summary once there are MIN_REPORTS
+// reports, with Claude's written summary of the notes on top once there are
+// enough notes. The AI part is labeled as such and sits above the reports it
+// came from, so anyone can check it.
+//
+// Before that, it's a different-looking card on purpose (dashed, no shadow,
+// its own icon, no status colors, since those all mean a condition): how
+// many more reports are needed, and a button to post one.
+function SummaryCard({ place, reports, now }: { place: Place; reports: Report[]; now: Date }) {
+  const recent = useMemo(() => recentReports(place, reports, now), [place, reports, now]);
+  const summary = useMemo(() => summarizeReports(place, reports, now), [place, reports, now]);
+  const notedKey = recent.filter((r) => r.note).map((r) => r.id).join(",");
+  const ai = useAiSummary(place.id, notedKey, summary !== null);
+
+  if (!summary) {
+    const have = Math.min(recent.length, MIN_REPORTS);
+    const more = MIN_REPORTS - have;
+    return (
+      <section aria-labelledby="summary" className="flex flex-col gap-3 rounded-lg border-2 border-dashed border-edge/50 bg-cream/60 p-5">
+        <div className="flex items-center gap-2 text-muted">
+          <NoDataIcon />
+          <h2 id="summary" className="text-heading text-ink">Not enough reports yet</h2>
+        </div>
+        <Progress have={have} need={MIN_REPORTS} label={`${have} of ${MIN_REPORTS} reports in the last 30 days`} />
+        <p className="text-body text-muted">
+          {more === MIN_REPORTS ? "After a couple of reports" : "After one more report"}, this shows which areas are usually open and when it&apos;s packed.
+        </p>
+        <div>
+          <PostButton placeId={place.id} size="sm" label={more === MIN_REPORTS ? "Post the first report" : "Post a report"} />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <Card as="section" className="flex flex-col gap-3" labelledBy="summary">
+      <h2 id="summary" className="text-heading">What golfers say</h2>
+      {ai.status === "loading" && (
+        <div role="status" className="flex flex-col gap-2">
+          <span className="sr-only">Summarizing notes…</span>
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+        </div>
+      )}
+      {ai.status === "ok" && (
+        <div className="flex flex-col gap-1">
+          <p className="text-body">{ai.text}</p>
+          <p className="text-label font-normal text-muted">
+            Written by AI from {ai.reports} reports and {ai.notes} notes. It can get things wrong; the reports are below.
+          </p>
+        </div>
+      )}
+      <ul className="flex list-disc flex-col gap-1 pl-5 text-body">
+        {summaryLines(summary).map((l) => <li key={l}>{l}</li>)}
+      </ul>
+      {ai.status === "few_notes" && (
+        <Progress
+          have={ai.notes}
+          need={MIN_NOTES}
+          label={`${ai.notes} of ${MIN_NOTES} notes until a written summary of what golfers said`}
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-3 border-t border-rule pt-3">
+        <span className="text-body text-muted">Been here today?</span>
+        <PostButton placeId={place.id} size="sm" />
+      </div>
+    </Card>
+  );
 }
 
 export function PlaceView({ placeId }: { placeId: string }) {
@@ -73,7 +152,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={status.hours.open ? "green" : "neutral"}>{status.hours.label}</Badge>
+          {ready ? <HoursBadge hours={status.hours} /> : <Skeleton className="h-7 w-40 rounded-full" />}
           {status.crowd ? (
             <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>
           ) : (
@@ -88,12 +167,6 @@ export function PlaceView({ placeId }: { placeId: string }) {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Show when="signed-in">
-            <ButtonLink href={`/places/${place.id}/report`} size="lg">Post a report</ButtonLink>
-          </Show>
-          <Show when="signed-out">
-            <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`} size="lg">Sign in to post a report</ButtonLink>
-          </Show>
           <ButtonLink href={directions} variant="secondary" size="lg" target="_blank" rel="noopener noreferrer">Directions</ButtonLink>
         </div>
       </section>
@@ -106,9 +179,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
       {follows.error && <Alert tone="error" title={follows.error} onDismiss={follows.clearError} />}
 
       <section className="flex flex-col gap-4" aria-labelledby="areas">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h2 id="areas" className="text-heading">Right now</h2>
-          <LiveDot live={live} />
+          <LiveDot live={live} compact />
         </div>
         {ready ? (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -126,7 +199,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        <section className="flex flex-col gap-3 lg:col-span-7" aria-labelledby="recent">
+        <div className="flex flex-col gap-6 lg:col-span-7">
+        {ready && <SummaryCard place={place} reports={reports} now={now} />}
+        <section className="flex flex-col gap-3" aria-labelledby="recent">
           <h2 id="recent" className="text-heading">Recent reports</h2>
           {loaded && recent.length === 0 && (
             <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
@@ -137,11 +212,13 @@ export function PlaceView({ placeId }: { placeId: string }) {
                 <p className="text-label text-muted">
                   {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
                 </p>
-                <p className="text-body">{summarize(place, r)}</p>
+                <p className="text-body">{reportLine(place, r)}</p>
+                {r.note && <p className="text-body italic text-ink/80">&ldquo;{r.note}&rdquo;</p>}
               </li>
             ))}
           </ol>
         </section>
+        </div>
 
         <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
           <h2 id="published" className="text-heading">Published info</h2>

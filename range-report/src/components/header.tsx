@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui";
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-cream-deep bg-cream">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-10 2xl:px-16">
         <Link href="/" className="flex items-center gap-2 rounded-sm font-display text-xl font-semibold text-green">
           <svg viewBox="0 0 16 16" className="size-5 text-brass" aria-hidden fill="currentColor">
             <rect x="4" y="2" width="1.5" height="12" />

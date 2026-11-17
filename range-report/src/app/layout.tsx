@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Suspense fallback={<div className="h-16 border-b border-cream-deep bg-cream" />}>
             <Header />
           </Suspense>
-          <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10">
+          <main id="main" className="w-full px-4 pb-20 pt-6 sm:px-6 sm:pt-10 lg:px-10 2xl:px-16">
             {children}
           </main>
         </ClerkProvider>

@@ -11,10 +11,27 @@ import { useFollows } from "@/lib/use-follows";
 import { useReports, type LiveStatus } from "@/lib/use-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
 
-export function LiveDot({ live }: { live: LiveStatus }) {
+// Whether new reports are arriving on their own. `compact` is the small pill
+// that sits right after a heading ("Right now · Live"); the full sentence is
+// for the home page intro, where it explains what "live" means.
+export function LiveDot({ live, compact }: { live: LiveStatus; compact?: boolean }) {
+  const dot = <span className={live === "live" ? "size-2 rounded-full bg-open motion-safe:animate-pulse" : "size-2 rounded-full bg-limited"} aria-hidden />;
+  if (compact) {
+    return (
+      <span
+        role="status"
+        title={live === "live" ? "New reports appear on their own" : "Reports may be out of date"}
+        className="inline-flex items-center gap-1.5 rounded-full border border-rule px-2.5 py-0.5 text-label font-normal text-muted"
+      >
+        {dot}
+        {live === "live" ? "Live" : live === "connecting" ? "Connecting…" : "Reconnecting…"}
+        {live === "live" && <span className="sr-only">: new reports appear on their own</span>}
+      </span>
+    );
+  }
   return (
     <p className="flex items-center gap-2 text-label font-normal text-muted" role="status">
-      <span className={live === "live" ? "size-2 rounded-full bg-open motion-safe:animate-pulse" : "size-2 rounded-full bg-limited"} aria-hidden />
+      {dot}
       {live === "live" ? "Live: new reports appear on their own" : live === "connecting" ? "Connecting…" : "Reconnecting… reports may be out of date"}
     </p>
   );
@@ -73,7 +90,7 @@ export function Home() {
       {weather.status === "error" && <Alert tone="warning" title="Weather is unavailable right now">Statuses still show, without the thunderstorm check.</Alert>}
 
       {!loaded || !statuses ? (
-        <ul className="grid gap-4 sm:grid-cols-2" aria-label="Loading places">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
           {places.slice(0, 4).map((p) => (
             <li key={p.id}>
               <Skeleton className="h-44 w-full" />
@@ -85,7 +102,7 @@ export function Home() {
           {mine.length > 0 && (
             <section className="flex flex-col gap-4" aria-labelledby="mine">
               <h2 id="mine" className="text-heading">Your places</h2>
-              <ul className="grid gap-4 sm:grid-cols-2">{mine.map(card)}</ul>
+              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{mine.map(card)}</ul>
             </section>
           )}
           <section className="flex flex-col gap-4" aria-labelledby="all">
@@ -100,7 +117,7 @@ export function Home() {
                 </p>
               </Show>
             </div>
-            <ul className="grid gap-4 sm:grid-cols-2">{others.map(card)}</ul>
+            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
           </section>
         </>
       )}
