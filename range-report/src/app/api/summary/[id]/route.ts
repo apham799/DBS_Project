@@ -26,6 +26,10 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_
 
 const json = (body: AiSummaryResponse, status = 200) => Response.json(body, { status });
 
+// Per server instance: good enough to stop a retry storm at this scale.
+const BACKOFF_MS = 5 * 60_000;
+const backoff = new Map<string, number>();
+
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/summary/[id]">) {
   const { id } = await ctx.params;
   const place = placeById(id);
@@ -54,10 +58,18 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/summary/[id
   const notes = reports.filter((r) => r.note).length;
   if (notes < MIN_NOTES) return json({ status: "few_notes", notes });
 
+  // After a failure (rate limit, outage), don't call Groq again for this place
+  // for a few minutes: errors aren't cached, so otherwise every page view
+  // would retry (and each try is up to two calls).
+  const until = backoff.get(place.id);
+  if (until && Date.now() < until) return json({ status: "error" }, 503);
+
   try {
     const text = await aiSummary(place.name, reportsBlock(place, reports));
-    return text ? json({ status: "ok", text, reports: reports.length, notes }) : json({ status: "error" }, 502);
+    backoff.delete(place.id);
+    return json({ status: "ok", text, reports: reports.length, notes });
   } catch (e) {
+    backoff.set(place.id, Date.now() + BACKOFF_MS);
     console.error("AI summary failed:", e instanceof Error ? e.message : e);
     return json({ status: "error" }, 502);
   }

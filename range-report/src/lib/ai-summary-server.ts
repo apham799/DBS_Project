@@ -51,7 +51,7 @@ const groqKey = () => activeKey(process.env.GROQ_API_KEY, new Date());
 
 export const aiSummaryEnabled = () => groqKey() !== null;
 
-export async function aiSummary(placeName: string, block: string): Promise<string | null> {
+export async function aiSummary(placeName: string, block: string): Promise<string> {
   "use cache";
   cacheLife({ stale: 3600, revalidate: 7 * 86400, expire: 30 * 86400 });
 
@@ -74,6 +74,9 @@ export async function aiSummary(placeName: string, block: string): Promise<strin
     max_completion_tokens: 1024,
   });
   const choice = res.choices[0];
-  if (!choice || choice.finish_reason === "length") return null; // cut off mid-sentence: show nothing
-  return choice.message.content?.trim() || null;
+  // Cut off mid-sentence, empty, or declined: throw rather than return null,
+  // because a returned value is cached (for days) and a thrown error isn't.
+  const text = choice?.message.content?.trim();
+  if (!choice || choice.finish_reason === "length" || !text) throw new Error(`No usable summary (finish: ${choice?.finish_reason ?? "none"})`);
+  return text;
 }
