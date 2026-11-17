@@ -35,7 +35,7 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
 }
 
 // "What golfers say": the rule-based summary once there are MIN_REPORTS
-// reports, with Claude's written summary of the notes on top once there are
+// reports, with the AI's written summary of the notes on top once there are
 // enough notes. The AI part is labeled as such and sits above the reports it
 // came from, so anyone can check it.
 //

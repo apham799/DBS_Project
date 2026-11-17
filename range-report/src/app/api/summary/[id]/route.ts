@@ -5,14 +5,14 @@ import { aiSummary, aiSummaryEnabled, MAX_REPORTS, MIN_NOTES, reportsBlock } fro
 import { SUMMARY_DAYS } from "@/lib/summary";
 import type { Report } from "@/lib/types";
 
-// GET /api/summary/:placeId → Claude's short summary of the last 30 days of
+// GET /api/summary/:placeId → the AI's short summary of the last 30 days of
 // reports at one place. Reads reports as a guest would (publishable key, the
 // anon role): reports are public, so the server sees nothing a guest couldn't.
 //
 //   { status: "ok", text, reports, notes }
 //   { status: "few_notes", notes }   not enough written notes to summarize yet
-//   { status: "off" }                no ANTHROPIC_API_KEY configured
-//   { status: "error" } (502)        Supabase or Claude failed; try again later
+//   { status: "off" }                no GROQ_API_KEY, or it's past its 30-day cutoff
+//   { status: "error" } (502)        Supabase or Groq failed; try again later
 
 export type AiSummaryResponse =
   | { status: "ok"; text: string; reports: number; notes: number }

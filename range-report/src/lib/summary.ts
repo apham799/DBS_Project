@@ -22,7 +22,7 @@ export function reportLine(place: Place, r: Report): string {
 export const SUMMARY_DAYS = 30;
 // Below this, a "pattern" is just one person's visit, so no summary is shown.
 export const MIN_REPORTS = 2;
-// Claude only writes a summary once a place has this many public notes.
+// The AI only writes a summary once a place has this many public notes.
 export const MIN_NOTES = 3;
 // A crowd pattern needs at least this many matching reports in the same slot.
 const MIN_CROWD = 2;

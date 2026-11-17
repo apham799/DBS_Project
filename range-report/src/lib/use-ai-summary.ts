@@ -5,7 +5,7 @@ import type { AiSummaryResponse } from "@/app/api/summary/[id]/route";
 
 export type AiSummaryState = { status: "idle" } | { status: "loading" } | AiSummaryResponse;
 
-// Asks the server for Claude's summary of one place, and again whenever `key`
+// Asks the server for the AI summary of one place, and again whenever `key`
 // changes (the ids of the reports it's based on), so a new report with a note
 // refreshes it without a reload. Off until `enabled` (enough notes to bother).
 //
