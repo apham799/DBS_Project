@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Libre_Franklin } from "next/font/google";
 import { Suspense } from "react";
 import { Header } from "@/components/header";
+import { Welcome } from "@/components/welcome";
 import "./globals.css";
 
 // Two typefaces, as in Bucket List: Fraunces for headings, Libre Franklin for the rest.
@@ -26,6 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </a>
           <Suspense fallback={<div className="h-16 border-b border-cream-deep bg-cream" />}>
             <Header />
+          </Suspense>
+          {/* What the site is, once, for visitors who aren't signed in. */}
+          <Suspense fallback={null}>
+            <Welcome />
           </Suspense>
           <main id="main" className="w-full px-4 pb-20 pt-4 sm:px-6 sm:pt-6 lg:px-10 2xl:px-16">
             {children}

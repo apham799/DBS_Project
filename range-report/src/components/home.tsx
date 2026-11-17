@@ -4,6 +4,7 @@ import { Show } from "@clerk/nextjs";
 import { useMemo } from "react";
 import { PlaceCard } from "@/components/place-card";
 import { Legend } from "@/components/status";
+import { openWelcome } from "@/components/welcome";
 import { Alert, Button, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
 import { placeStatus } from "@/lib/status";
@@ -113,7 +114,14 @@ export function Home() {
               </Show>
               <Show when="signed-out">
                 <p className="text-body text-muted">
-                  <TextLink href="/sign-up">Sign up</TextLink> to follow your places and post what you find.
+                  <TextLink href="/sign-up">Sign up</TextLink> to follow your places and post what you find.{" "}
+                  <button
+                    type="button"
+                    onClick={openWelcome}
+                    className="rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green"
+                  >
+                    How it works
+                  </button>
                 </p>
               </Show>
             </div>
