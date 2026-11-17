@@ -47,24 +47,55 @@ In priority order.
    - Supabase pauses projects after 7 days without activity, and Nov 24 is a no-class week: make sure the project is used or check on it.
    - Set usage and spending alerts where the services offer them.
    - The Groq key cutoff is Dec 17, after the fair.
+6. **Edit and update your past reports, and show when one was changed.** Two different actions (design below):
+   - **Edit** fixes a mistake in the report as it was, e.g. a wrong tap or a typo in the note.
+   - **Update** adds what changed later, e.g. "the range reopened" or "it got packed".
 
 ## Nov 24 – Dec 1: v2 at the fair
 
-6. **Patterns job (the systems centerpiece).**
+7. **Patterns job (the systems centerpiece).**
    - A nightly scheduled job (Supabase pg_cron or Edge Function + Cron) builds a `place_patterns` table from all report history, not just the last 30 days.
    - Example output: "busy most weekday evenings", "short game usually limited in November".
    - The place page reads it. This is the "background work" the proposal promised.
    - It could also store the AI summaries, so they're shared across server instances.
-7. **City map.**
+8. **City map.**
    - Leaflet + OpenStreetMap: the seven places as status pins, with a list/map toggle on the home page.
    - Free, no key.
-8. **Checkpoint #2 and measuring the results.**
+9. **Checkpoint #2 and measuring the results.**
    - Second conversation with the golfers.
    - Run the query above.
    - Write up what changed decisions and what didn't.
-9. **Fair prep.**
+10. **Fair prep.**
    - A two-minute demo path: Home → a place's heat map → post a report → it appears live in a second window → My log.
    - Real data only.
+
+## Design: editing vs updating a report
+
+They need to be different, because **status is computed from when a report was made**. "Range good, reported 2 h ago" is only true if the rating describes the range 2 hours ago.
+
+**Edit: "I got it wrong."**
+- Fixes the report as it was: a wrong tap, a typo in the public note.
+- The report keeps its original time, since it still describes that visit.
+- Only the person who posted it can edit it (checked through their practice log, since reports carry no user id), and only for a short window, e.g. 30 minutes or the same golf day. After that the record stands, so history can't be rewritten.
+- Shown as **"edited"** next to the time, with what changed available (for example "was: limited").
+- Previous versions are kept in a `report_revisions` table, so "reports are never lost" still holds.
+
+**Update: "Things changed."**
+- New information at a new time: "range reopened at 3", "it got packed after work".
+- Saved as a **new report linked to the original** (`updates_report_id`), with its own time, so the status logic treats it as the fresh information it is.
+- Shown in the recent reports as **"Update · 3 PM"** under the original.
+- Allowed during the same visit (same place, same golf day). It counts against the per-place rate limit, or gets its own smaller limit.
+
+**Private notes in My log** are different again: they're only yours and affect nothing else, so they can be edited any time, with no "edited" label needed.
+
+**Systems work this involves:**
+- an `edit_report()` RPC with the ownership and time-window checks
+- the `report_revisions` table
+- an `edited_at` column
+- the `updates_report_id` link
+- listening for Realtime UPDATE events as well as INSERTs
+- status tests for "an edit keeps the report's time; an update is newer"
+- AI summaries refresh automatically, because their cache key is the report text
 
 ## If time runs short (cut in this order)
 
