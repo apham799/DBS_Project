@@ -32,9 +32,16 @@ export function Welcome() {
   const ref = useRef<HTMLDialogElement>(null);
   const authPage = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
 
-  // First visit, signed out: open it once.
+  // First visit, signed out: open it once. Anyone who has been signed in on
+  // this browser already knows the site, so signing in also counts as having
+  // seen it: after they sign out, it stays closed.
   useEffect(() => {
-    if (!isLoaded || isSignedIn || authPage) return;
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      localStorage.setItem(SEEN_KEY, "1");
+      return;
+    }
+    if (authPage) return;
     if (localStorage.getItem(SEEN_KEY)) return;
     localStorage.setItem(SEEN_KEY, "1");
     ref.current?.showModal();
