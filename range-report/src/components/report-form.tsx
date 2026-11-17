@@ -12,7 +12,9 @@ import type { Condition, Crowd } from "@/lib/types";
 
 // Public notes: short, and no links (the database checks both too).
 const PUBLIC_MAX = 280;
-const hasLink = (s: string) => /(https?:\/\/|www\.)/i.test(s);
+// Same rule as the database: http(s)://, www., or a bare domain (example.com).
+const hasLink = (s: string) =>
+  /(https?:\/\/|www\.)/i.test(s) || /[a-z0-9-]+\.(com|net|org|io|co|ly|gg|me|xyz|info|biz|app|dev|link|site|shop|club|us|tv|to)(\b|\/)/i.test(s);
 
 // Three taps, then your own notes. Posting has to beat texting a friend, so
 // only the first question is required; everything else can be skipped.
@@ -102,6 +104,9 @@ export function ReportForm({ placeId }: { placeId: string }) {
   const [publicNote, setPublicNote] = useState("");
   const [note, setNote] = useState("");
   const [changed, setChanged] = useState<Changed | null>(null);
+  // One id per visit to the form: if the response to a post is lost and they
+  // tap Post again, the database recognises the id and doesn't post twice.
+  const [reportId] = useState(() => crypto.randomUUID());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
@@ -120,10 +125,16 @@ export function ReportForm({ placeId }: { placeId: string }) {
       p_note: note,
       p_changed_decision: changed,
       p_public_note: publicNote,
+      p_id: reportId,
     });
     setSaving(false);
     if (error) {
-      setError("Your report didn't save. Check your connection and try again. Nothing you entered was lost.");
+      // RR429: the database's rate limit (one report per place every 10 minutes).
+      setError(
+        error.code === "RR429"
+          ? "You posted here in the last few minutes, so this one wasn't added. You can post again about 10 minutes after your last report."
+          : "Your report didn't save. Check your connection and try again. Nothing you entered was lost.",
+      );
       return;
     }
     sessionStorage.setItem(POSTED_KEY, place.id);
