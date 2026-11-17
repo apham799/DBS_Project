@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hoursNow } from "./hours";
-import { placeStatus, WINDOWS } from "./status";
+import { CLOCK_SKEW, placeStatus, WINDOWS } from "./status";
 import type { Place, Report } from "./types";
 
 // A Harborside-like place. Chicago is UTC-6 in November (after DST ends).
@@ -194,6 +194,16 @@ describe("conflicting and odd reports", () => {
     );
     expect(area(s, "chipping")).toMatchObject({ state: "open", basis: "report" });
     expect(s.reportsThisWeek).toBe(1);
+  });
+
+  it("counts a report a few minutes 'ahead' of the browser clock (just posted)", () => {
+    // The browser clock ticks every 30 s and can run slow; the report's time is the database's.
+    const justPosted = report(ago(-40_000), { areas: { chipping: "closed" } }); // 40 s "ahead"
+    const s = placeStatus(range, [justPosted, report(ago(HOUR), { areas: { chipping: "good" } })], SAT_2PM);
+    expect(area(s, "chipping")).toMatchObject({ state: "closed", basis: "report", reason: "Reported closed 1 min ago" });
+    // Far ahead is a bad clock or bad data: still ignored.
+    const wayAhead = report(ago(-(CLOCK_SKEW + 60_000)), { areas: { chipping: "closed" } });
+    expect(area(placeStatus(range, [wayAhead], SAT_2PM), "chipping").basis).toBe("hours");
   });
 
   it("counts reports from the last 7 days", () => {

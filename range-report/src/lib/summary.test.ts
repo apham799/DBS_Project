@@ -43,7 +43,7 @@ describe("summarizeReports", () => {
     expect(summarizeReports(place, [], NOW)).toBeNull();
     expect(summarizeReports(place, [report(HOUR)], NOW)).toBeNull();
     // Other places, future reports and reports older than 30 days don't count.
-    const noise = [report(HOUR, { placeId: "elsewhere" }), report(-HOUR), report(31 * DAY)];
+    const noise = [report(HOUR, { placeId: "elsewhere" }), report(-HOUR), report(31 * DAY)]; // -HOUR: beyond the clock-skew allowance
     expect(summarizeReports(place, [report(HOUR), ...noise], NOW)).toBeNull();
   });
 
@@ -108,6 +108,11 @@ describe("summarizeReports", () => {
 });
 
 describe("recentReports", () => {
+  it("keeps a report a few seconds ahead of the browser clock (just posted)", () => {
+    const justPosted = report(-30_000);
+    expect(recentReports(place, [justPosted], NOW).map((r) => r.id)).toEqual([justPosted.id]);
+  });
+
   it("keeps this place's reports from the window, newest first", () => {
     const older = report(5 * DAY);
     const newer = report(HOUR);

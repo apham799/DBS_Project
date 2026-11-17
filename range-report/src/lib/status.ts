@@ -26,6 +26,13 @@ export const WINDOWS = {
   conflict: 3 * HOUR, // two reports this close together that disagree
 } as const;
 
+// How far "in the future" a report may be and still count. Report times come
+// from the database's clock, `now` from the browser's, which ticks every 30 s
+// and can run a little slow. Without this, a report posted a few seconds ago
+// (yours, or one arriving live) was ignored until the browser clock caught up.
+// Further ahead than this is a bad clock or bad data, and is still ignored.
+export const CLOCK_SKEW = 5 * 60_000;
+
 export type AreaState = "open" | "limited" | "closed";
 export type Basis = "report" | "likely" | "weather" | "season" | "hours";
 
@@ -157,7 +164,7 @@ function lastReport(reports: Report[], area: Area, now: Date): string {
 
 export function placeStatus(place: Place, allReports: Report[], now: Date, weather: WeatherNow = null): PlaceStatus {
   const reports = allReports
-    .filter((r) => r.placeId === place.id && new Date(r.createdAt) <= now)
+    .filter((r) => r.placeId === place.id && new Date(r.createdAt).getTime() <= now.getTime() + CLOCK_SKEW)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const hours = hoursNow(place.hours, now);

@@ -1,4 +1,5 @@
 import { chicagoParts, weekdayLabel } from "./chicago-time";
+import { CLOCK_SKEW } from "./status";
 import type { Condition, Crowd, Place, Report } from "./types";
 
 // What past reports at a place add up to, computed from the data alone (no AI),
@@ -68,7 +69,8 @@ function topSlot(reports: Report[], level: Crowd): { slot: string; count: number
   return best;
 }
 
-// This place's reports from the last `days` days (none from the future), newest
+// This place's reports from the last `days` days (none from the future beyond
+// CLOCK_SKEW), newest
 // first. The summary and the "1 of 2 reports needed" count both use this, so
 // they always agree on what counts.
 export function recentReports(place: Place, allReports: Report[], now: Date, days = SUMMARY_DAYS): Report[] {
@@ -77,7 +79,7 @@ export function recentReports(place: Place, allReports: Report[], now: Date, day
     .filter((r) => r.placeId === place.id)
     .filter((r) => {
       const at = new Date(r.createdAt).getTime();
-      return at <= t && at > t - days * 86400_000;
+      return at <= t + CLOCK_SKEW && at > t - days * 86400_000;
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
