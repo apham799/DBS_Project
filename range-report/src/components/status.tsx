@@ -94,13 +94,6 @@ const hoursBadgeTone: Record<HoursTone, string> = {
   closed: "border-hours-red/30 bg-hours-red/12 text-hours-red-ink",
 };
 
-// A whole place card, washed with the same color very lightly.
-export const hoursCardTone: Record<HoursTone, string> = {
-  open: "bg-hours-green/[0.06]",
-  soon: "bg-hours-yellow/[0.12]",
-  closed: "bg-hours-red/[0.05]",
-};
-
 export function HoursBadge({ hours }: { hours: HoursNow }) {
   const tone = hoursTone(hours);
   return (

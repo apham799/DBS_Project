@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AreaDots, crowdWord, headline, hoursCardTone, HoursBadge, hoursTone, NoDataIcon } from "@/components/status";
+import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
 import type { Place } from "@/lib/types";
@@ -47,8 +47,7 @@ export function PlaceCard({
   return (
     <li
       className={cx(
-        "relative flex flex-col gap-3 rounded-lg border p-5 shadow-card transition-shadow hover:shadow-lift",
-        hoursCardTone[hoursTone(status.hours)],
+        "relative flex flex-col gap-3 rounded-lg border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
         highlight ? "border-green" : "border-rule",
       )}
     >
