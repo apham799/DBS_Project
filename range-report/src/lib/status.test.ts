@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hoursNow } from "./hours";
-import { CLOCK_SKEW, placeStatus, WINDOWS } from "./status";
+import { CLOCK_SKEW, effectiveNow, placeStatus, WINDOWS } from "./status";
 import type { Place, Report } from "./types";
 
 // A Harborside-like place. Chicago is UTC-6 in November (after DST ends).
@@ -194,6 +194,14 @@ describe("conflicting and odd reports", () => {
     );
     expect(area(s, "chipping")).toMatchObject({ state: "open", basis: "report" });
     expect(s.reportsThisWeek).toBe(1);
+  });
+
+  it("never lets 'now' fall behind the newest report (a slow device clock)", () => {
+    const tenMinAhead = report(ago(-10 * 60_000), { areas: { chipping: "closed" } });
+    const now = effectiveNow(SAT_2PM, [tenMinAhead, report(ago(HOUR))]);
+    expect(now.toISOString()).toBe(tenMinAhead.createdAt);
+    expect(area(placeStatus(range, [tenMinAhead], now), "chipping")).toMatchObject({ state: "closed", basis: "report" });
+    expect(effectiveNow(SAT_2PM, [report(ago(HOUR))])).toBe(SAT_2PM);
   });
 
   it("ends a closure for every area as soon as someone reports the place open", () => {

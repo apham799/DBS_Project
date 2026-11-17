@@ -7,7 +7,7 @@ import { Legend } from "@/components/status";
 import { openWelcome } from "@/components/welcome";
 import { Alert, Button, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
-import { placeStatus } from "@/lib/status";
+import { effectiveNow, placeStatus } from "@/lib/status";
 import { useFollows } from "@/lib/use-follows";
 import { useReports, type LiveStatus } from "@/lib/use-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
@@ -41,7 +41,9 @@ export function LiveDot({ live, compact }: { live: LiveStatus; compact?: boolean
 export function Home() {
   const { reports, loaded, error, live, justAdded, retry } = useReports();
   const weather = useWeather();
-  const now = useNow();
+  const clock = useNow();
+  // Never behind the newest report (a slow device clock would hide it).
+  const now = useMemo(() => clock && effectiveNow(clock, reports), [clock, reports]);
   const follows = useFollows();
 
   const statuses = useMemo(

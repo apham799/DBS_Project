@@ -33,6 +33,16 @@ export const WINDOWS = {
 // Further ahead than this is a bad clock or bad data, and is still ignored.
 export const CLOCK_SKEW = 5 * 60_000;
 
+// "Now" for computing statuses: the browser clock, but never earlier than the
+// newest report we've seen. Report times come from the database's clock, so a
+// report "from the future" means this device's clock is behind; trusting the
+// report keeps the status, the ages and the recent-reports list in agreement.
+export function effectiveNow(now: Date, reports: Report[]): Date {
+  let newest = now.getTime();
+  for (const r of reports) newest = Math.max(newest, new Date(r.createdAt).getTime());
+  return newest === now.getTime() ? now : new Date(newest);
+}
+
 export type AreaState = "open" | "limited" | "closed";
 export type Basis = "report" | "likely" | "weather" | "season" | "hours";
 

@@ -8,7 +8,7 @@ import { FollowButton } from "@/components/place-card";
 import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById } from "@/data/places";
-import { ageLabel, placeStatus, type AreaStatus } from "@/lib/status";
+import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
 import { useAiSummary } from "@/lib/use-ai-summary";
@@ -162,7 +162,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
   const { reports, loaded, error, live, retry } = useReports();
   const weather = useWeather();
-  const now = useNow();
+  const clock = useNow();
+  // Never behind the newest report (a slow device clock would hide it).
+  const now = useMemo(() => clock && effectiveNow(clock, reports), [clock, reports]);
   const follows = useFollows();
   const [toast, setToast] = useState<string | null>(null);
 
