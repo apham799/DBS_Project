@@ -45,20 +45,19 @@ const conditionState: Record<Condition, AreaState> = { good: "open", limited: "l
 const conditionLabel: Record<Condition, string> = { good: "Good", limited: "Limited", closed: "Closed" };
 const CONDITIONS: Condition[] = ["good", "limited", "closed"];
 
-function RatingChip({ condition, count, latest }: { condition: Condition; count?: number; latest?: boolean }) {
-  const state = conditionState[condition];
+// Ratings are data, not controls: plain colored text and a thin bar, never a
+// bordered pill (pills looked like the report form's buttons and invited taps).
+const conditionText: Record<Condition, string> = { good: "text-open", limited: "text-limited", closed: "text-closed" };
+const conditionBar: Record<Condition, string> = { good: "bg-open", limited: "bg-limited", closed: "bg-closed" };
+
+function Rating({ condition, count }: { condition: Condition; count?: number }) {
+  // Never picked: grayed out, so the options golfers actually chose stand out.
+  const none = count === 0;
   return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-label",
-        // Never picked: grayed out, so the options golfers actually chose stand out.
-        count === 0 ? "border-rule bg-disabled-bg text-disabled" : stateTone[state],
-        latest && "ring-2 ring-current ring-offset-1",
-      )}
-    >
-      <StateIcon state={state} className="size-3.5" />
+    <span className={cx("inline-flex items-center gap-1", none ? "text-disabled" : conditionText[condition])}>
+      <StateIcon state={conditionState[condition]} className="size-3.5" />
       <span className="font-semibold">{conditionLabel[condition]}</span>
-      {count !== undefined && <span>{count}</span>}
+      {count !== undefined && <span className={none ? "" : "text-ink"}>{count}</span>}
     </span>
   );
 }
@@ -107,20 +106,26 @@ export function AreaTile({ status, trend, now, highlight }: { status: AreaStatus
           <div className="flex flex-col gap-2.5 border-t border-current/15 bg-surface/70 px-3 py-3 text-label font-normal text-muted">
             {trend && (
               <>
-                <p className="flex flex-wrap items-center gap-2">
-                  <span>Latest</span>
-                  <RatingChip condition={trend.latest} />
-                  <span>updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>Latest:</span>
+                  <Rating condition={trend.latest} />
+                  <span>· updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
                 </p>
                 <div className="flex flex-col gap-1.5">
                   <span>
                     Last 30 days · {trend.rated} {trend.rated === 1 ? "rating" : "ratings"}
                   </span>
-                  <ul className="flex flex-wrap gap-1.5" aria-label={`${area.label} ratings in the last 30 days`}>
+                  {/* Share of each rating, as one thin bar. */}
+                  <div className="flex h-1.5 overflow-hidden rounded-full bg-rule" aria-hidden>
+                    {CONDITIONS.filter((c) => trend.counts[c] > 0).map((c) => (
+                      <span key={c} className={conditionBar[c]} style={{ width: `${(trend.counts[c] / trend.rated) * 100}%` }} />
+                    ))}
+                  </div>
+                  <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={`${area.label} ratings in the last 30 days`}>
                     {CONDITIONS.map((c) => (
                       <li key={c}>
-                        <RatingChip condition={c} count={trend.counts[c]} latest={c === trend.latest} />
-                        <span className="sr-only">{trend.counts[c] === 0 ? " times, not reported" : trend.counts[c] === 1 ? " time" : " times"}{c === trend.latest ? ", the latest rating" : ""}</span>
+                        <Rating condition={c} count={trend.counts[c]} />
+                        <span className="sr-only">{trend.counts[c] === 0 ? " times, not reported" : trend.counts[c] === 1 ? " time" : " times"}</span>
                       </li>
                     ))}
                   </ul>
