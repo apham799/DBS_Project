@@ -137,6 +137,7 @@ export function MapKey() {
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-limited bg-limited-tint")} />Limited: usable, not normal</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-closed bg-closed-tint")} />Closed</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-edge/40 bg-surface")} />No current report</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-limited bg-limited-tint opacity-55")} />Faded: last known, while the place is closed</li>
         </ul>
       </div>
       <div className="flex flex-col gap-2">

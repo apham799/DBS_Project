@@ -217,6 +217,10 @@ describe("published hours", () => {
     expect(area(s, "range").reason).toBe("Reported good 5 h ago");
     expect(area(s, "chipping").reason).toBe("Reported closed 5 h ago");
     expect(area(s, "putting").reason).toBe("");
+    // What each area would show if it were open, for the map's "last known".
+    expect(area(s, "range").lastKnown).toEqual({ state: "open", basis: "report" });
+    expect(area(s, "chipping").lastKnown).toEqual({ state: "closed", basis: "report" });
+    expect(area(s, "putting").lastKnown).toBeNull();
   });
 
   it("say when a place closes within the hour", () => {

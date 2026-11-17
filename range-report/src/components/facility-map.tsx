@@ -22,22 +22,37 @@ import { stateWord } from "@/components/status";
 const W = 600;
 const H = 320;
 
-type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null };
+type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null; faded?: boolean };
+
+const tones = {
+  open: { fill: "fill-open-tint", stroke: "stroke-open", text: "fill-open" },
+  limited: { fill: "fill-limited-tint", stroke: "stroke-limited", text: "fill-limited" },
+  closed: { fill: "fill-closed-tint", stroke: "stroke-closed", text: "fill-closed" },
+};
+const dashFor = (basis: AreaStatus["basis"]) => (basis === "likely" ? "10 6" : basis === "season" || basis === "weather" ? "2 5" : undefined);
+const wordFor = (state: AreaStatus["state"], basis: AreaStatus["basis"]) =>
+  basis === "likely" ? `probably ${stateWord[state].toLowerCase()}` : stateWord[state].toLowerCase();
 
 function look(s: AreaStatus): Look {
-  if (s.basis === "hours") return { fill: "fill-surface", stroke: "stroke-edge/40", text: "fill-muted", word: null };
-  const tone = {
-    open: { fill: "fill-open-tint", stroke: "stroke-open", text: "fill-open" },
-    limited: { fill: "fill-limited-tint", stroke: "stroke-limited", text: "fill-limited" },
-    closed: { fill: "fill-closed-tint", stroke: "stroke-closed", text: "fill-closed" },
-  }[s.state];
-  const dash = s.basis === "likely" ? "10 6" : s.basis === "season" || s.basis === "weather" ? "2 5" : undefined;
-  const word = s.basis === "likely" ? `probably ${stateWord[s.state].toLowerCase()}` : stateWord[s.state].toLowerCase();
-  return { ...tone, dash, word };
+  if (s.basis === "hours") {
+    // The place is closed by its hours, but something is known about this
+    // area: show it in its color, faded, as "last: limited". Planning
+    // tomorrow's session at night is exactly when this matters.
+    if (s.lastKnown) {
+      const { state, basis } = s.lastKnown;
+      return { ...tones[state], dash: dashFor(basis), word: `last: ${wordFor(state, basis)}`, faded: true };
+    }
+    return { fill: "fill-surface", stroke: "stroke-edge/40", text: "fill-muted", word: null };
+  }
+  return { ...tones[s.state], dash: dashFor(s.basis), word: wordFor(s.state, s.basis) };
 }
 
 // What a screen reader hears for an area.
-const spoken = (s: AreaStatus) => look(s).word ?? (s.state === "closed" ? "closed by its hours" : "no current report");
+const spoken = (s: AreaStatus) => {
+  if (s.basis !== "hours") return look(s).word!;
+  const last = s.lastKnown ? `, last known ${wordFor(s.lastKnown.state, s.lastKnown.basis)}` : "";
+  return (s.state === "closed" ? "closed by its hours" : "no current report") + last;
+};
 
 // One clickable area: its shape(s), then its label on top.
 function Area({
@@ -67,7 +82,8 @@ function Area({
         }
       }}
     >
-      {children(l)}
+      {/* Last known while the place is closed: same color, faded. */}
+      <g opacity={l.faded ? 0.55 : 1}>{children(l)}</g>
       <text x={label.x} y={label.y} textAnchor="middle" className="pointer-events-none select-none" style={{ fontSize: size }} aria-hidden>
         <tspan className="fill-ink font-semibold">{status.area.label}</tspan>
         {l.word &&

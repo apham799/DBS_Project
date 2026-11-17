@@ -36,6 +36,9 @@ export type AreaStatus = {
   reason: string;
   reportedAt: string | null; // the report this is based on, if any
   conflict: boolean; // a report shortly before it disagreed
+  // While the place is closed by its hours: what this area would show if it
+  // were open (a report, the season), so the map can still say "last known".
+  lastKnown?: { state: AreaState; basis: Exclude<Basis, "hours"> } | null;
 };
 
 export type PlaceStatus = {
@@ -88,7 +91,8 @@ function areaStatus(
   if (!hours.open) {
     const known = areaStatus(place, area, reports, now, { ...hours, open: true }, null);
     const reason = known.basis === "hours" ? lastReport(reports, area, now) : known.reason;
-    return { ...known, state: "closed", basis: "hours", reason };
+    const lastKnown = known.basis === "hours" ? null : { state: known.state, basis: known.basis };
+    return { ...known, state: "closed", basis: "hours", reason, lastKnown };
   }
 
   if (area.outdoor && weather?.stormNow) {
