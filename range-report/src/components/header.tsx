@@ -26,6 +26,11 @@ export function Header() {
               Sign up
             </ButtonLink>
           </Show>
+          <Show when="signed-in">
+            <ButtonLink href="/log" variant="ghost" size="sm">
+              My log
+            </ButtonLink>
+          </Show>
           <UserButton />
         </div>
       </div>
