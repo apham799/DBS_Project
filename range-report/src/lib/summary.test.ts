@@ -65,6 +65,7 @@ describe("summarizeReports", () => {
     )!;
     const chipping = s.areas.find((a) => a.areaId === "chipping")!;
     expect(chipping).toMatchObject({ rated: 4, top: "closed", latest: "good", counts: { good: 1, limited: 0, closed: 3 } });
+    expect(chipping.latestAt).toBe(new Date(NOW.getTime() - HOUR).toISOString());
     // Areas nobody rated are left out; place order is kept.
     expect(s.areas.map((a) => a.areaId)).toEqual(["range", "chipping"]);
     expect(summaryLines(s)).toContain("Chipping area: closed in 3 of 4 reports, but the latest said good.");

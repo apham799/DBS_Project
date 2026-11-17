@@ -8,7 +8,7 @@ import { AreaTile, crowdWord, HoursBadge, Legend, NoDataIcon, Progress } from "@
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById } from "@/data/places";
 import { ageLabel, placeStatus } from "@/lib/status";
-import { MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
+import { areaTrends, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
 import { useAiSummary } from "@/lib/use-ai-summary";
 import { useFollows } from "@/lib/use-follows";
@@ -131,14 +131,18 @@ export function PlaceView({ placeId }: { placeId: string }) {
     [place, reports, now, weather.status, w],
   );
   const ready = loaded && now !== null;
+  // How each area has been rated in the last 30 days, for the area rows.
+  const trends = useMemo(
+    () => new Map(now ? areaTrends(place, recentReports(place, reports, now)).map((t) => [t.areaId, t]) : []),
+    [place, reports, now],
+  );
   const recent = reports.filter((r) => r.placeId === place.id).slice(0, 10);
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lon}`;
 
   return (
     <div className="flex flex-col gap-8">
-      <TextLink href="/" className="w-fit">← All places</TextLink>
-
       <section className="flex flex-col gap-4">
+        <TextLink href="/" className="w-fit">← All places</TextLink>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-display">{place.name}</h1>
@@ -186,7 +190,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
         {ready ? (
           <ul className="grid items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {status.areas.map((a) => (
-              <AreaTile key={a.area.id} status={a} highlight={justAdded.has(place.id)} />
+              <AreaTile key={a.area.id} status={a} trend={trends.get(a.area.id)} now={now} highlight={justAdded.has(place.id)} />
             ))}
           </ul>
         ) : (
@@ -198,7 +202,26 @@ export function PlaceView({ placeId }: { placeId: string }) {
         <Legend />
       </section>
 
-      {ready && <SummaryCard place={place} reports={reports} now={now} />}
+      {/* Summary and published info side by side on wide screens, stacked on
+          smaller ones. items-start: each card is only as tall as its content
+          (stretching the shorter one to match left a lot of empty space). */}
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+        <div className="lg:col-span-7">{ready && <SummaryCard place={place} reports={reports} now={now} />}</div>
+
+        <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
+          <h2 id="published" className="text-heading">Published info</h2>
+          <p className="text-body">{place.hoursNote}</p>
+          {place.seasons.length > 0 && (
+            <ul className="list-disc pl-5 text-body">
+              {place.seasons.map((s) => <li key={s.from + s.note}>{s.note}</li>)}
+            </ul>
+          )}
+          <p className="text-label font-normal text-muted">Checked Nov 16, 2026. A golfer&apos;s report always beats these.</p>
+          <a href={place.website} target="_blank" rel="noopener noreferrer" className="w-fit rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
+            Their website
+          </a>
+        </Card>
+      </div>
 
       <section className="flex flex-col gap-3" aria-labelledby="recent">
         <h2 id="recent" className="text-heading">Recent reports</h2>
@@ -219,27 +242,6 @@ export function PlaceView({ placeId }: { placeId: string }) {
           </ol>
         )}
       </section>
-
-      {/* Reference, not the main event: a short full-width strip at the bottom.
-          On wide screens the hours, the seasons and the "checked" line sit side
-          by side, so it's only as tall as its longest part. */}
-      <Card tone="cream" as="section" className="flex flex-col gap-3" labelledBy="published">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 id="published" className="text-heading">Published info</h2>
-          <p className="text-label font-normal text-muted">Checked Nov 16, 2026. A golfer&apos;s report always beats these.</p>
-        </div>
-        <div className="grid gap-x-8 gap-y-2 md:grid-cols-2">
-          <p className="text-body">{place.hoursNote}</p>
-          {place.seasons.length > 0 && (
-            <ul className="list-disc pl-5 text-body">
-              {place.seasons.map((s) => <li key={s.from + s.note}>{s.note}</li>)}
-            </ul>
-          )}
-        </div>
-        <a href={place.website} target="_blank" rel="noopener noreferrer" className="w-fit rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
-          Their website
-        </a>
-      </Card>
 
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>

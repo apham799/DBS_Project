@@ -1,6 +1,8 @@
 import { cx } from "@/components/ui";
 import type { HoursNow } from "@/lib/hours";
-import type { AreaState, AreaStatus, PlaceStatus } from "@/lib/status";
+import { ageLabel, type AreaState, type AreaStatus, type PlaceStatus } from "@/lib/status";
+import type { AreaTrend } from "@/lib/summary";
+import type { Condition } from "@/lib/types";
 
 // How each area's status looks. Color, an icon and a word always go together.
 // The border says how sure we are:
@@ -30,16 +32,42 @@ export function StateIcon({ state, className = "size-4" }: { state: AreaState; c
   );
 }
 
-// One area on a place page: a single compact row (icon, name, state). The why
-// ("Reported good 2 h ago", the season note, reports that disagree) opens from
-// the row, so the list stays short and scannable. Areas with nothing more to
-// say are just the row.
-export function AreaTile({ status, highlight }: { status: AreaStatus; highlight?: boolean }) {
+// One area on a place page: a single compact row (icon, name, state). Opening
+// the row shows how golfers have rated it: the latest rating and how long ago,
+// then every option with how many times it was picked in the last 30 days.
+// The season or weather note shows too when that's what set the status.
+// Areas with nothing more to say are just the row.
+
+const conditionState: Record<Condition, AreaState> = { good: "open", limited: "limited", closed: "closed" };
+const conditionLabel: Record<Condition, string> = { good: "Good", limited: "Limited", closed: "Closed" };
+const CONDITIONS: Condition[] = ["good", "limited", "closed"];
+
+function RatingChip({ condition, count, latest }: { condition: Condition; count?: number; latest?: boolean }) {
+  const state = conditionState[condition];
+  return (
+    <span
+      className={cx(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-label",
+        count === 0 ? "border-rule bg-surface text-muted" : stateTone[state],
+        latest && "ring-2 ring-current ring-offset-1",
+      )}
+    >
+      <StateIcon state={state} className="size-3.5" />
+      <span className="font-semibold">{conditionLabel[condition]}</span>
+      {count !== undefined && <span>{count}</span>}
+    </span>
+  );
+}
+
+export function AreaTile({ status, trend, now, highlight }: { status: AreaStatus; trend?: AreaTrend; now: Date; highlight?: boolean }) {
   const { area, state, basis, reason, conflict } = status;
   // Nothing known beyond the hours: no icon or state word. The hours badge at
   // the top already says open or closed; repeating it on every row was noise.
   const known = basis !== "hours";
-  const hasMore = !!reason || conflict;
+  // With ratings to show, "Reported limited 2 h ago" would only repeat them;
+  // the season or weather note, or the reason when nobody rated it, still helps.
+  const note = !trend || basis === "season" || basis === "weather" ? reason : "";
+  const hasMore = !!trend || !!note || conflict;
 
   const row = (
     <>
@@ -72,8 +100,30 @@ export function AreaTile({ status, highlight }: { status: AreaStatus; highlight?
               <path d="M4 6 L8 10 L12 6" />
             </svg>
           </summary>
-          <div className="flex flex-col gap-1 px-3 pb-3 text-label font-normal text-muted">
-            {reason && <p>{reason}</p>}
+          <div className="flex flex-col gap-2.5 border-t border-current/15 bg-surface/70 px-3 py-3 text-label font-normal text-muted">
+            {trend && (
+              <>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span>Latest</span>
+                  <RatingChip condition={trend.latest} />
+                  <span>updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <span>
+                    Last 30 days · {trend.rated} {trend.rated === 1 ? "rating" : "ratings"}
+                  </span>
+                  <ul className="flex flex-wrap gap-1.5" aria-label={`${area.label} ratings in the last 30 days`}>
+                    {CONDITIONS.map((c) => (
+                      <li key={c}>
+                        <RatingChip condition={c} count={trend.counts[c]} latest={c === trend.latest} />
+                        <span className="sr-only">{trend.counts[c] === 1 ? " time" : " times"}{c === trend.latest ? ", the latest rating" : ""}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
+            {note && <p>{note}</p>}
             {conflict && <p>Golfers reported different things within a few hours. The newest report is shown.</p>}
           </div>
         </details>

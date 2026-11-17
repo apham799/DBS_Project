@@ -34,6 +34,7 @@ export type AreaTrend = {
   counts: Record<Condition, number>;
   top: Condition; // most common rating (ties go to the most recent)
   latest: Condition;
+  latestAt: string; // when the latest rating was posted
 };
 
 export type Summary = {
@@ -81,22 +82,32 @@ export function recentReports(place: Place, allReports: Report[], now: Date, day
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function summarizeReports(place: Place, allReports: Report[], now: Date, days = SUMMARY_DAYS): Summary | null {
-  const t = now.getTime();
-  const reports = recentReports(place, allReports, now, days);
-  if (reports.length < MIN_REPORTS) return null;
-
-  const areas: AreaTrend[] = [];
+// How each area has been rated in `recent` (newest first, e.g. from
+// recentReports): counts for every option, the most common, and the latest.
+// Only explicit area ratings count; a "closed when I got there" visit is about
+// the whole place. Areas nobody rated are left out; place order is kept.
+export function areaTrends(place: Place, recent: Report[]): AreaTrend[] {
+  const out: AreaTrend[] = [];
   for (const a of place.areas) {
-    const ratings = reports.map((r) => (r.placeOpen ? r.areas[a.id] : undefined)).filter((c): c is Condition => !!c);
-    if (!ratings.length) continue;
+    const rated = recent.filter((r) => r.placeOpen && r.areas[a.id]);
+    if (!rated.length) continue;
+    const ratings = rated.map((r) => r.areas[a.id]);
     const counts: Record<Condition, number> = { good: 0, limited: 0, closed: 0 };
     for (const c of ratings) counts[c]++;
     const max = Math.max(counts.good, counts.limited, counts.closed);
     // Newest first, so the first rating with the top count is the most recent one.
     const top = ratings.find((c) => counts[c] === max)!;
-    areas.push({ areaId: a.id, label: a.label, rated: ratings.length, counts, top, latest: ratings[0] });
+    out.push({ areaId: a.id, label: a.label, rated: ratings.length, counts, top, latest: ratings[0], latestAt: rated[0].createdAt });
   }
+  return out;
+}
+
+export function summarizeReports(place: Place, allReports: Report[], now: Date, days = SUMMARY_DAYS): Summary | null {
+  const t = now.getTime();
+  const reports = recentReports(place, allReports, now, days);
+  if (reports.length < MIN_REPORTS) return null;
+
+  const areas = areaTrends(place, reports);
 
   return {
     total: reports.length,
