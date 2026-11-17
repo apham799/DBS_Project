@@ -3,6 +3,7 @@
 import { Show } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { LiveDot } from "@/components/home";
+import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { AreaTile, crowdWord, HoursBadge, Legend, NoDataIcon, Progress } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
@@ -131,6 +132,14 @@ export function PlaceView({ placeId }: { placeId: string }) {
     [place, reports, now, weather.status, w],
   );
   const ready = loaded && now !== null;
+  // Tapping an area on the map opens its row and brings it into view.
+  const selectArea = (areaId: string) => {
+    const row = document.getElementById(`area-${areaId}`);
+    const details = row?.querySelector("details");
+    if (details) details.open = true;
+    row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    (row?.querySelector("summary") as HTMLElement | null)?.focus({ preventScroll: true });
+  };
   // How each area has been rated in the last 30 days, for the area rows.
   const trends = useMemo(
     () => new Map(now ? areaTrends(place, recentReports(place, reports, now)).map((t) => [t.areaId, t]) : []),
@@ -188,15 +197,24 @@ export function PlaceView({ placeId }: { placeId: string }) {
           <LiveDot live={live} compact />
         </div>
         {ready ? (
-          <ul className="grid items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {status.areas.map((a) => (
-              <AreaTile key={a.area.id} status={a} trend={trends.get(a.area.id)} now={now} highlight={justAdded.has(place.id)} />
-            ))}
-          </ul>
+          // The heat map beside the rows on wide screens; above them on phones.
+          <div className="grid items-start gap-4 lg:grid-cols-12 lg:gap-6">
+            <div className="lg:col-span-7 2xl:col-span-6">
+              <FacilityMap place={place} status={status} onSelect={selectArea} />
+            </div>
+            <ul className="grid items-start gap-2 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 2xl:col-span-6 2xl:grid-cols-2">
+              {status.areas.map((a) => (
+                <AreaTile key={a.area.id} status={a} trend={trends.get(a.area.id)} now={now} highlight={justAdded.has(place.id)} />
+              ))}
+            </ul>
+          </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" role="status">
+          <div className="grid items-start gap-4 lg:grid-cols-12 lg:gap-6" role="status">
             <span className="sr-only">Loading reports…</span>
-            {place.areas.map((a) => <Skeleton key={a.id} className="h-11" />)}
+            <Skeleton className="aspect-[15/8] w-full lg:col-span-7 2xl:col-span-6" />
+            <div className="flex flex-col gap-2 lg:col-span-5 2xl:col-span-6">
+              {place.areas.map((a) => <Skeleton key={a.id} className="h-11" />)}
+            </div>
           </div>
         )}
         <Legend />

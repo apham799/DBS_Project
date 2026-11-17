@@ -87,8 +87,9 @@ export function AreaTile({ status, trend, now, highlight }: { status: AreaStatus
 
   return (
     <li
+      id={`area-${area.id}`}
       className={cx(
-        "rounded-md border-2 text-body transition-shadow",
+        "scroll-mt-24 rounded-md border-2 text-body transition-shadow",
         known ? stateTone[state] : "border-rule bg-surface text-ink",
         basis === "likely" && "border-dashed",
         (basis === "season" || basis === "weather") && "border-dotted",
