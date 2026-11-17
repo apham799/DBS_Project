@@ -2,7 +2,7 @@
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 // One Supabase client per person (or one shared guest client), as in A5.
 //
@@ -16,14 +16,30 @@ const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 let guestClient: SupabaseClient | null = null;
-const getGuestClient = () => (guestClient ??= createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false } }));
+export const getGuestClient = () => (guestClient ??= createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false } }));
+
+// One client per signed-in person for the whole page session, not one per
+// component: each client opens its own Realtime websocket. The token is read
+// from the current Clerk instance at request time.
+const userClients = new Map<string, SupabaseClient>();
+let currentClerk: ReturnType<typeof useClerk> | null = null;
+const getUserClient = (userId: string) => {
+  let c = userClients.get(userId);
+  if (!c) {
+    c = createClient(URL_, KEY, { accessToken: async () => (await currentClerk?.session?.getToken()) ?? null });
+    userClients.set(userId, c);
+  }
+  return c;
+};
 
 export function useDb() {
   const { isLoaded, userId } = useAuth();
   const clerk = useClerk();
-  const db = useMemo(
-    () => (userId ? createClient(URL_, KEY, { accessToken: async () => (await clerk.session?.getToken()) ?? null }) : getGuestClient()),
-    [clerk, userId],
-  );
+  // Effects run in order, so this is set before any later effect in the same
+  // component (a load, a subscribe) asks for a token.
+  useEffect(() => {
+    currentClerk = clerk;
+  }, [clerk]);
+  const db = useMemo(() => (userId ? getUserClient(userId) : getGuestClient()), [userId]);
   return { db, isLoaded, userId: userId ?? null };
 }
