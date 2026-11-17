@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDb } from "./db";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -27,9 +27,14 @@ export function useFollows() {
     };
   }, [db, isLoaded, userId]);
 
+  // Places with a save in flight: taps on them are ignored until it lands, so
+  // a fast double tap can't send an insert and a delete that race.
+  const busy = useRef(new Set<string>());
+
   const toggle = useCallback(
     async (placeId: string, name: string) => {
-      if (!userId) return;
+      if (!userId || busy.current.has(placeId)) return;
+      busy.current.add(placeId);
       setError(null);
       const was = following.has(placeId);
       const apply = (on: boolean) =>
@@ -43,7 +48,9 @@ export function useFollows() {
       const { error } = was
         ? await db.from("follows").delete().eq("place_id", placeId)
         : await db.from("follows").insert({ place_id: placeId });
-      if (error) {
+      busy.current.delete(placeId);
+      // 23505: already following (say, from another tab). That's the state we wanted.
+      if (error && error.code !== "23505") {
         apply(was);
         setError(`Couldn't ${was ? "unfollow" : "follow"} ${name}. Check your connection and try again.`);
       }
