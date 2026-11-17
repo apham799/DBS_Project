@@ -1,0 +1,3 @@
+# The proposal Vercel project serves only index.html; the app is its own Vercel project.
+range-report
+*.mp4
