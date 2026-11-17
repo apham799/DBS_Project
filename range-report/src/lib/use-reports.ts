@@ -67,6 +67,10 @@ export function useReports() {
   useEffect(() => {
     if (!isLoaded) return;
     let cancelled = false;
+    // If the live connection doesn't open (some networks block websockets),
+    // load anyway after a few seconds, so the page never sits on skeletons
+    // with no way to post. It just won't update on its own.
+    const fallback = setTimeout(() => !cancelled && load(), 4000);
     const channel = db
       .channel("reports")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "reports" }, (payload) => {
@@ -76,6 +80,7 @@ export function useReports() {
       .subscribe((s) => {
         if (cancelled) return;
         if (s === "SUBSCRIBED") {
+          clearTimeout(fallback);
           setLive("live");
           load();
         } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
@@ -84,6 +89,7 @@ export function useReports() {
       });
     return () => {
       cancelled = true;
+      clearTimeout(fallback);
       db.removeChannel(channel);
     };
   }, [db, isLoaded, load, add]);
