@@ -184,15 +184,15 @@ export function PlaceView({ placeId }: { placeId: string }) {
           <LiveDot live={live} compact />
         </div>
         {ready ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {status.areas.map((a) => (
               <AreaTile key={a.area.id} status={a} highlight={justAdded.has(place.id)} />
             ))}
           </ul>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" role="status">
             <span className="sr-only">Loading reports…</span>
-            {place.areas.map((a) => <Skeleton key={a.id} className="h-28" />)}
+            {place.areas.map((a) => <Skeleton key={a.id} className="h-11" />)}
           </div>
         )}
         <Legend />

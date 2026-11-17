@@ -30,35 +30,56 @@ export function StateIcon({ state, className = "size-4" }: { state: AreaState; c
   );
 }
 
+// One area on a place page: a single compact row (icon, name, state). The why
+// ("Reported good 2 h ago", the season note, reports that disagree) opens from
+// the row, so the list stays short and scannable. Areas with nothing more to
+// say are just the row.
 export function AreaTile({ status, highlight }: { status: AreaStatus; highlight?: boolean }) {
   const { area, state, basis, reason, conflict } = status;
+  // Nothing known beyond the hours: no icon or state word. The hours badge at
+  // the top already says open or closed; repeating it on every row was noise.
   const known = basis !== "hours";
+  const hasMore = !!reason || conflict;
+
+  const row = (
+    <>
+      {known && <StateIcon state={state} />}
+      <span className="min-w-0 flex-1 truncate font-semibold text-ink">{area.label}</span>
+      {conflict && <span className="rounded-full border border-current px-2 text-label font-normal">Reports differ</span>}
+      {known ? (
+        <span className="font-semibold">{basis === "likely" ? `Probably ${stateWord[state].toLowerCase()}` : stateWord[state]}</span>
+      ) : (
+        <span className="sr-only">: {stateWord[state].toLowerCase()} by its hours</span>
+      )}
+    </>
+  );
+
   return (
     <li
       className={cx(
-        "flex flex-col gap-2 rounded-lg border-2 p-4 transition-shadow",
-        known && "min-h-28",
+        "rounded-md border-2 text-body transition-shadow",
         known ? stateTone[state] : "border-rule bg-surface text-ink",
         basis === "likely" && "border-dashed",
         (basis === "season" || basis === "weather") && "border-dotted",
         highlight && "shadow-lift",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-heading text-ink">{area.label}</p>
-        {conflict && <span className="rounded-full border border-current px-2 text-label">Reports differ</span>}
-      </div>
-      {/* Nothing known beyond the hours: no icon or state word. The hours badge
-          at the top already says open or closed; repeating it on every tile was noise. */}
-      {known ? (
-        <p className="flex items-center gap-1.5 text-body font-semibold">
-          <StateIcon state={state} />
-          {basis === "likely" ? `Probably ${stateWord[state].toLowerCase()}` : stateWord[state]}
-        </p>
+      {hasMore ? (
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+            {row}
+            <svg viewBox="0 0 16 16" className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6 L8 10 L12 6" />
+            </svg>
+          </summary>
+          <div className="flex flex-col gap-1 px-3 pb-3 text-label font-normal text-muted">
+            {reason && <p>{reason}</p>}
+            {conflict && <p>Golfers reported different things within a few hours. The newest report is shown.</p>}
+          </div>
+        </details>
       ) : (
-        <span className="sr-only">{stateWord[state]} by its hours.</span>
+        <div className="flex items-center gap-2 px-3 py-2.5">{row}</div>
       )}
-      {reason && <p className="text-label font-normal text-muted">{reason}</p>}
     </li>
   );
 }
