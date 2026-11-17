@@ -51,4 +51,5 @@ export type Report = {
   placeOpen: boolean; // false = "it was closed when I got there"
   areas: Record<string, Condition>; // only the areas they reported on
   crowd: Crowd | null;
+  note?: string | null; // public, optional, max 280 characters, no links
 };

@@ -10,6 +10,10 @@ import { placeById } from "@/data/places";
 import { useDb } from "@/lib/db";
 import type { Condition, Crowd } from "@/lib/types";
 
+// Public notes: short, and no links (the database checks both too).
+const PUBLIC_MAX = 280;
+const hasLink = (s: string) => /(https?:\/\/|www\.)/i.test(s);
+
 // Three taps, then your own notes. Posting has to beat texting a friend, so
 // only the first question is required; everything else can be skipped.
 
@@ -95,6 +99,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
   const [open, setOpen] = useState<"yes" | "no" | null>(null);
   const [areas, setAreas] = useState<Record<string, Condition>>({});
   const [crowd, setCrowd] = useState<Crowd | null>(null);
+  const [publicNote, setPublicNote] = useState("");
   const [note, setNote] = useState("");
   const [changed, setChanged] = useState<Changed | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,7 +109,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTried(true);
-    if (!open) return;
+    if (!open || hasLink(publicNote)) return;
     setSaving(true);
     setError(null);
     const { error } = await db.rpc("post_report", {
@@ -114,6 +119,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
       p_crowd: open === "yes" ? crowd : null,
       p_note: note,
       p_changed_decision: changed,
+      p_public_note: publicNote,
     });
     setSaving(false);
     if (error) {
@@ -184,6 +190,31 @@ export function ReportForm({ placeId }: { placeId: string }) {
                 </div>
                 <Choice legend="How busy was it?" hint="Optional" options={crowds} value={crowd} onChange={setCrowd} />
               </>
+            )}
+
+            {open && (
+              <label className="flex flex-col gap-2">
+                <span className="text-body font-semibold">
+                  Anything other golfers should know? <span className="font-normal text-muted">Optional</span>
+                </span>
+                <textarea
+                  value={publicNote}
+                  onChange={(e) => setPublicNote(e.target.value.slice(0, PUBLIC_MAX))}
+                  rows={2}
+                  maxLength={PUBLIC_MAX}
+                  aria-describedby="public-note-help"
+                  aria-invalid={hasLink(publicNote) || undefined}
+                  placeholder={open === "yes" ? "Chipping green roped off, use the side putting green. Mats only on the range." : "Closed for a private event until 3."}
+                  className="rounded-md border-2 border-edge bg-surface p-3 text-body"
+                />
+                <span id="public-note-help" className="flex justify-between gap-3 text-label font-normal text-muted">
+                  <span>Everyone sees this with your report, without your name. No links.</span>
+                  <span aria-live="polite">{publicNote.length}/{PUBLIC_MAX}</span>
+                </span>
+                {hasLink(publicNote) && (
+                  <span className="text-label text-error" role="alert">Take out the link to post. Notes can&apos;t include links.</span>
+                )}
+              </label>
             )}
           </Card>
 
