@@ -14,10 +14,10 @@ import { stateWord } from "@/components/status";
 // It's a SKETCH, not a survey: the same layout rules for every place (range on
 // the left with its tee line, short game on the right; simulator rooms as rows
 // of bays), built from the areas each place has. It says "not to scale" so no
-// one mistakes it for a real map. Clicking an area opens its row below.
+// one mistakes it for a real map.
 //
-// The rows below carry the same information for keyboards and screen readers,
-// so the drawing is one labeled image with a text summary.
+// Each area is a real button (Tab, then Enter or Space) that opens a pop-up
+// with its details, so the map works without a mouse too.
 
 const W = 600;
 const H = 320;
@@ -36,6 +36,9 @@ function look(s: AreaStatus): Look {
   return { ...tone, dash, word };
 }
 
+// What a screen reader hears for an area.
+const spoken = (s: AreaStatus) => look(s).word ?? (s.state === "closed" ? "closed by its hours" : "no current report");
+
 // One clickable area: its shape(s), then its label on top.
 function Area({
   status,
@@ -51,9 +54,21 @@ function Area({
   const l = look(status);
   const size = label.small ? 12 : 15;
   return (
-    <g className="cursor-pointer transition-opacity hover:opacity-80" onClick={() => onSelect(status.area.id)}>
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={`${status.area.label}: ${spoken(status)}. Show details`}
+      className="area cursor-pointer outline-none transition-opacity hover:opacity-80"
+      onClick={() => onSelect(status.area.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(status.area.id);
+        }
+      }}
+    >
       {children(l)}
-      <text x={label.x} y={label.y} textAnchor="middle" className="pointer-events-none select-none" style={{ fontSize: size }}>
+      <text x={label.x} y={label.y} textAnchor="middle" className="pointer-events-none select-none" style={{ fontSize: size }} aria-hidden>
         <tspan className="fill-ink font-semibold">{status.area.label}</tspan>
         {l.word &&
           (label.inline ? (
@@ -68,7 +83,8 @@ function Area({
   );
 }
 
-const shape = (l: Look) => ({ className: cx(l.fill, l.stroke), strokeWidth: 2.5, strokeDasharray: l.dash });
+// "area-shape" is the outline the keyboard focus ring goes on (globals.css).
+const shape = (l: Look) => ({ className: cx("area-shape", l.fill, l.stroke), strokeWidth: 2.5, strokeDasharray: l.dash });
 
 // Flags and target greens: decoration only, never clickable.
 function Flag({ x, y }: { x: number; y: number }) {
@@ -232,15 +248,16 @@ export function FacilityMap({ place, status, onSelect }: { place: Place; status:
   for (const a of status.areas) byKind[a.area.kind] ??= a;
 
   const summary = status.areas
-    .map((a) => `${a.area.label}: ${a.basis === "hours" ? "no current report" : look(a).word}`)
+    .map((a) => `${a.area.label}: ${spoken(a)}`)
     .join("; ");
 
   return (
     <figure className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full rounded-lg bg-cream/40" role="img" aria-label={`Sketch of ${place.name}. ${summary}.`}>
+      {/* A group of buttons, one per area: Tab moves between them, Enter opens one. */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full rounded-lg bg-cream/40" role="group" aria-label={`Sketch of ${place.name}. ${summary}.`}>
         {place.kind === "sim" ? <Sim byKind={byKind} onSelect={onSelect} /> : <WalkIn byKind={byKind} onSelect={onSelect} />}
       </svg>
-      <figcaption className="text-label font-normal text-muted">Sketch, not to scale. Tap an area for its reports.</figcaption>
+      <figcaption className="text-label font-normal text-muted">Sketch, not to scale.</figcaption>
     </figure>
   );
 }

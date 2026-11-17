@@ -117,3 +117,11 @@
     outline-offset: 2px;
   }
 }
+
+/* Facility map: keyboard focus shows as a thick focus-colored outline on the
+   area itself (an SVG group can't take a normal CSS outline). */
+.area:focus-visible .area-shape {
+  stroke: var(--color-focus);
+  stroke-width: 5;
+  stroke-dasharray: none;
+}

@@ -1,15 +1,15 @@
 "use client";
 
 import { Show } from "@clerk/nextjs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { AreaTile, crowdWord, HoursBadge, Legend, NoDataIcon, Progress } from "@/components/status";
+import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById } from "@/data/places";
-import { ageLabel, placeStatus } from "@/lib/status";
-import { areaTrends, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
+import { ageLabel, placeStatus, type AreaStatus } from "@/lib/status";
+import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
 import { useAiSummary } from "@/lib/use-ai-summary";
 import { useFollows } from "@/lib/use-follows";
@@ -19,6 +19,59 @@ import { useNow, useWeather } from "@/lib/use-weather";
 export const POSTED_KEY = "range-report:posted";
 
 const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", minute: "2-digit" });
+
+// One area's details, in a pop-up over the map. A native <dialog>: focus moves
+// in and back to the map when it closes; Esc, the X or a click outside close it.
+function AreaDialog({
+  status,
+  trend,
+  now,
+  placeId,
+  onClose,
+}: {
+  status: AreaStatus | null;
+  trend?: AreaTrend;
+  now: Date;
+  placeId: string;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const open = status !== null;
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="area-dialog-title"
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
+      className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg border border-rule bg-surface p-0 text-ink shadow-lift backdrop:bg-ink/40"
+    >
+      {status && (
+        <div className="flex flex-col gap-4 p-6">
+          <div className="flex items-start justify-between gap-4">
+            <h2 id="area-dialog-title" className="text-heading">{status.area.label}</h2>
+            <button type="button" onClick={() => ref.current?.close()} aria-label="Close" className="-mr-2 -mt-1 rounded-md p-2 text-muted hover:bg-cream hover:text-ink">
+              <svg viewBox="0 0 16 16" className="size-5" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 4 L12 12 M12 4 L4 12" />
+              </svg>
+            </button>
+          </div>
+          <AreaDetails status={status} trend={trend} now={now} />
+          <div className="flex flex-wrap items-center gap-3 border-t border-rule pt-4">
+            <span className="text-body text-muted">Been here today?</span>
+            <PostButton placeId={placeId} size="sm" />
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
+}
 
 // Where to post from this page: the form if signed in, sign-in first if not.
 // There's exactly one on the page, in the summary card (both versions of it).
@@ -107,7 +160,7 @@ function SummaryCard({ place, reports, now }: { place: Place; reports: Report[];
 
 export function PlaceView({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
-  const { reports, loaded, error, live, justAdded, retry } = useReports();
+  const { reports, loaded, error, live, retry } = useReports();
   const weather = useWeather();
   const now = useNow();
   const follows = useFollows();
@@ -132,15 +185,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
     [place, reports, now, weather.status, w],
   );
   const ready = loaded && now !== null;
-  // Tapping an area on the map opens its row and brings it into view.
-  const selectArea = (areaId: string) => {
-    const row = document.getElementById(`area-${areaId}`);
-    const details = row?.querySelector("details");
-    if (details) details.open = true;
-    row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    (row?.querySelector("summary") as HTMLElement | null)?.focus({ preventScroll: true });
-  };
-  // How each area has been rated in the last 30 days, for the area rows.
+  // The area whose details pop-up is open, if any.
+  const [selected, setSelected] = useState<string | null>(null);
+  // How each area has been rated in the last 30 days, for the details pop-up.
   const trends = useMemo(
     () => new Map(now ? areaTrends(place, recentReports(place, reports, now)).map((t) => [t.areaId, t]) : []),
     [place, reports, now],
@@ -197,28 +244,33 @@ export function PlaceView({ placeId }: { placeId: string }) {
           <LiveDot live={live} compact />
         </div>
         {ready ? (
-          // The heat map beside the rows on wide screens; above them on phones.
-          <div className="grid items-start gap-4 lg:grid-cols-12 lg:gap-6">
-            <div className="lg:col-span-7 2xl:col-span-6">
-              <FacilityMap place={place} status={status} onSelect={selectArea} />
+          // The heat map is the whole section: its key beside it on wide
+          // screens, below it on phones. Tapping an area opens its details.
+          <div className="grid items-start gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-8 2xl:col-span-7">
+              <FacilityMap place={place} status={status} onSelect={setSelected} />
             </div>
-            <ul className="grid items-start gap-2 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 2xl:col-span-6 2xl:grid-cols-2">
-              {status.areas.map((a) => (
-                <AreaTile key={a.area.id} status={a} trend={trends.get(a.area.id)} now={now} highlight={justAdded.has(place.id)} />
-              ))}
-            </ul>
+            <div className="lg:col-span-4 2xl:col-span-5">
+              <MapKey />
+            </div>
           </div>
         ) : (
-          <div className="grid items-start gap-4 lg:grid-cols-12 lg:gap-6" role="status">
+          <div className="grid items-start gap-6 lg:grid-cols-12" role="status">
             <span className="sr-only">Loading reports…</span>
-            <Skeleton className="aspect-[15/8] w-full lg:col-span-7 2xl:col-span-6" />
-            <div className="flex flex-col gap-2 lg:col-span-5 2xl:col-span-6">
-              {place.areas.map((a) => <Skeleton key={a.id} className="h-11" />)}
-            </div>
+            <Skeleton className="aspect-[15/8] w-full lg:col-span-8 2xl:col-span-7" />
           </div>
         )}
-        <Legend />
       </section>
+
+      {ready && (
+        <AreaDialog
+          status={status.areas.find((a) => a.area.id === selected) ?? null}
+          trend={selected ? trends.get(selected) : undefined}
+          now={now}
+          placeId={place.id}
+          onClose={() => setSelected(null)}
+        />
+      )}
 
       {/* Summary and published info side by side on wide screens, stacked on
           smaller ones. items-start: each card is only as tall as its content

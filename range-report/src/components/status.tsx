@@ -35,11 +35,9 @@ export function StateIcon({ state, className = "size-4" }: { state: AreaState; c
   );
 }
 
-// One area on a place page: a single compact row (icon, name, state). Opening
-// the row shows how golfers have rated it: the latest rating and how long ago,
-// then every option with how many times it was picked in the last 30 days.
-// The season or weather note shows too when that's what set the status.
-// Areas with nothing more to say are just the row.
+// What we know about one area, for the pop-up that opens from the facility
+// map: its status now and why, the latest rating and how long ago, then every
+// option with how many times it was picked in the last 30 days.
 
 const conditionState: Record<Condition, AreaState> = { good: "open", limited: "limited", closed: "closed" };
 const conditionLabel: Record<Condition, string> = { good: "Good", limited: "Limited", closed: "Closed" };
@@ -62,85 +60,95 @@ function Rating({ condition, count }: { condition: Condition; count?: number }) 
   );
 }
 
-export function AreaTile({ status, trend, now, highlight }: { status: AreaStatus; trend?: AreaTrend; now: Date; highlight?: boolean }) {
-  const { area, state, basis, reason, conflict } = status;
-  // Nothing known beyond the hours: no icon or state word. The hours badge at
-  // the top already says open or closed; repeating it on every row was noise.
-  const known = basis !== "hours";
+const stateText: Record<AreaState, string> = { open: "text-open", limited: "text-limited", closed: "text-closed" };
+
+// "Open", "Probably limited", or null when nothing is known beyond the hours.
+export function areaStateLabel(s: AreaStatus): string | null {
+  if (s.basis === "hours") return null;
+  return s.basis === "likely" ? `Probably ${stateWord[s.state].toLowerCase()}` : stateWord[s.state];
+}
+
+export function AreaDetails({ status, trend, now }: { status: AreaStatus; trend?: AreaTrend; now: Date }) {
+  const { state, basis, reason, conflict } = status;
+  const label = areaStateLabel(status);
   // With ratings to show, "Reported limited 2 h ago" would only repeat them;
   // the season or weather note, or the reason when nobody rated it, still helps.
   const note = !trend || basis === "season" || basis === "weather" ? reason : "";
-  const hasMore = !!trend || !!note || conflict;
-
-  const row = (
-    <>
-      {known && <StateIcon state={state} />}
-      <span className="min-w-0 flex-1 truncate font-semibold text-ink">{area.label}</span>
-      {conflict && <span className="rounded-full border border-current px-2 text-label font-normal">Reports differ</span>}
-      {known ? (
-        <span className="font-semibold">{basis === "likely" ? `Probably ${stateWord[state].toLowerCase()}` : stateWord[state]}</span>
-      ) : (
-        <span className="sr-only">: {stateWord[state].toLowerCase()} by its hours</span>
-      )}
-    </>
-  );
 
   return (
-    <li
-      id={`area-${area.id}`}
-      className={cx(
-        "scroll-mt-24 rounded-md border-2 text-body transition-shadow",
-        known ? stateTone[state] : "border-rule bg-surface text-ink",
-        basis === "likely" && "border-dashed",
-        (basis === "season" || basis === "weather") && "border-dotted",
-        highlight && "shadow-lift",
-      )}
-    >
-      {hasMore ? (
-        <details className="group">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-            {row}
-            <svg viewBox="0 0 16 16" className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 6 L8 10 L12 6" />
-            </svg>
-          </summary>
-          <div className="flex flex-col gap-2.5 border-t border-current/15 bg-surface/70 px-3 py-3 text-label font-normal text-muted">
-            {trend && (
-              <>
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>Latest:</span>
-                  <Rating condition={trend.latest} />
-                  <span>· updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <span>
-                    Last 30 days · {trend.rated} {trend.rated === 1 ? "rating" : "ratings"}
-                  </span>
-                  {/* Share of each rating, as one thin bar. */}
-                  <div className="flex h-1.5 overflow-hidden rounded-full bg-rule" aria-hidden>
-                    {CONDITIONS.filter((c) => trend.counts[c] > 0).map((c) => (
-                      <span key={c} className={conditionBar[c]} style={{ width: `${(trend.counts[c] / trend.rated) * 100}%` }} />
-                    ))}
-                  </div>
-                  <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={`${area.label} ratings in the last 30 days`}>
-                    {CONDITIONS.map((c) => (
-                      <li key={c}>
-                        <Rating condition={c} count={trend.counts[c]} />
-                        <span className="sr-only">{trend.counts[c] === 0 ? " times, not reported" : trend.counts[c] === 1 ? " time" : " times"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-            {note && <p>{note}</p>}
-            {conflict && <p>Golfers reported different things within a few hours. The newest report is shown.</p>}
+    <div className="flex flex-col gap-4 text-body">
+      <div className="flex flex-col gap-1">
+        {label ? (
+          <p className={cx("flex items-center gap-1.5 font-semibold", stateText[state])}>
+            <StateIcon state={state} />
+            {label}
+            {conflict && <span className="ml-1 rounded-full border border-current px-2 text-label font-normal">Reports differ</span>}
+          </p>
+        ) : (
+          // Nothing current: say why, so "Latest: Limited" below reads as the
+          // last thing known, not as a contradiction.
+          <p className="text-muted">{state === "closed" ? "Closed right now, by its published hours." : "Open by its hours. No current report."}</p>
+        )}
+        {note && <p className="text-label font-normal text-muted">{note}</p>}
+        {conflict && <p className="text-label font-normal text-muted">Golfers reported different things within a few hours. The newest report is shown.</p>}
+      </div>
+
+      {trend ? (
+        <div className="flex flex-col gap-2 border-t border-rule pt-4 text-label font-normal text-muted">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Latest:</span>
+            <Rating condition={trend.latest} />
+            <span>· updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
+          </p>
+          <span>
+            Last 30 days · {trend.rated} {trend.rated === 1 ? "rating" : "ratings"}
+          </span>
+          {/* Share of each rating, as one thin bar. */}
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-rule" aria-hidden>
+            {CONDITIONS.filter((c) => trend.counts[c] > 0).map((c) => (
+              <span key={c} className={conditionBar[c]} style={{ width: `${(trend.counts[c] / trend.rated) * 100}%` }} />
+            ))}
           </div>
-        </details>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Ratings in the last 30 days">
+            {CONDITIONS.map((c) => (
+              <li key={c}>
+                <Rating condition={c} count={trend.counts[c]} />
+                <span className="sr-only">{trend.counts[c] === 0 ? " times, not reported" : trend.counts[c] === 1 ? " time" : " times"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
-        <div className="flex items-center gap-2 px-3 py-2.5">{row}</div>
+        <p className="border-t border-rule pt-4 text-label font-normal text-muted">Nobody has rated this in the last 30 days.</p>
       )}
-    </li>
+    </div>
+  );
+}
+
+// The heat map's key: what the fills and the outlines mean.
+export function MapKey() {
+  const swatch = "inline-block h-4 w-7 shrink-0 rounded-sm border-2";
+  return (
+    <div className="flex flex-col gap-4 text-label font-normal text-muted">
+      <div className="flex flex-col gap-2">
+        <p className="font-semibold text-ink">Colors</p>
+        <ul className="flex flex-col gap-1.5">
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-open bg-open-tint")} />Good</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-limited bg-limited-tint")} />Limited: usable, not normal</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-closed bg-closed-tint")} />Closed</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-edge/40 bg-surface")} />No current report</li>
+        </ul>
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="font-semibold text-ink">How sure</p>
+        <ul className="flex flex-col gap-1.5">
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />Solid: reported in the last day</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-dashed border-ink")} />Dashed: this week, probably still true</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-dotted border-ink")} />Dotted: published season, or the weather</li>
+        </ul>
+      </div>
+      <p>Tap an area on the map for its reports.</p>
+    </div>
   );
 }
 
