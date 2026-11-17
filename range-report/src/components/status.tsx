@@ -191,29 +191,36 @@ export function headline(s: PlaceStatus): string | null {
 // A row of small chips, one per area: the place card's mini heat map.
 //
 // Only areas we know something about (a report, the season, the weather) get a
-// color, an icon and a word. The rest are plain chips that just say the area
-// exists: an ✕ on "Chipping area" at night read as "no chipping area here",
-// when it only meant "the place is closed right now", which the headline
-// above already says.
+// color, an icon and a word. While the place is closed by its hours, that's
+// the last known status, lighter and worded "last: limited", like the
+// facility map. The rest are plain chips that just say the area exists (an ✕
+// on "Chipping area" at night read as "no chipping area here").
 export function AreaDots({ status }: { status: PlaceStatus }) {
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label="Areas">
       {status.areas.map((a) => {
-        const known = a.basis !== "hours";
+        const shown = a.basis !== "hours" ? { state: a.state, basis: a.basis } : a.lastKnown ?? null;
+        const last = a.basis === "hours" && shown !== null;
         return (
           <li
             key={a.area.id}
             className={cx(
               "flex items-center gap-1 rounded-md border px-2 py-1 text-label",
-              known ? stateTone[a.state] : "border-rule bg-surface text-muted",
-              a.basis === "likely" && "border-dashed",
-              (a.basis === "season" || a.basis === "weather") && "border-dotted",
+              // Last known: colored text on a light outline, no fill, so it reads
+              // as "not right now" without fading the words.
+              !shown ? "border-rule bg-surface text-muted" : last ? cx(stateText[shown.state], "border-current/40 bg-surface") : stateTone[shown.state],
+              shown?.basis === "likely" && "border-dashed",
+              (shown?.basis === "season" || shown?.basis === "weather") && "border-dotted",
             )}
           >
-            {known && <StateIcon state={a.state} className="size-3.5" />}
+            {shown && <StateIcon state={shown.state} className="size-3.5" />}
             <span className="text-ink">{a.area.label}</span>
-            {known ? (
-              <span className="font-semibold">{a.basis === "likely" ? "probably " : ""}{stateWord[a.state].toLowerCase()}</span>
+            {shown ? (
+              <span className="font-semibold">
+                {last ? "last: " : ""}
+                {shown.basis === "likely" ? "probably " : ""}
+                {stateWord[shown.state].toLowerCase()}
+              </span>
             ) : (
               <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>
             )}
