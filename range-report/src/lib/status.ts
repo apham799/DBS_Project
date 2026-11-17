@@ -77,10 +77,11 @@ function activeSeason(place: Place, areaId: string, dateKey: string): SeasonRule
 }
 
 // What a report says about one area, or undefined if it says nothing.
-function valueFor(report: Report, areaId: string): Condition | undefined {
-  if (!report.placeOpen) return "closed";
-  return report.areas[areaId];
-}
+// The "golf day" a moment belongs to: the Chicago date, rolling over at 4 AM
+// rather than midnight, so a "closed for a private event" report at 11:30 PM
+// at a place open until 1 AM still holds at 12:30.
+const GOLF_DAY_STARTS = 4 * HOUR;
+const golfDay = (d: Date) => chicagoParts(new Date(d.getTime() - GOLF_DAY_STARTS)).dateKey;
 
 function areaStatus(
   place: Place,
@@ -108,23 +109,49 @@ function areaStatus(
 
   const today = chicagoParts(now).dateKey;
   const season = activeSeason(place, area.id, today);
-  const latest = reports.find((r) => valueFor(r, area.id) !== undefined);
+  const beforeSeason = (r: Report) => season !== undefined && chicagoParts(new Date(r.createdAt)).dateKey < season.from;
 
-  if (latest) {
-    const value = valueFor(latest, area.id)!;
+  // 1. "Closed when I got there" covers every area, but only while it's the
+  //    latest word on the place: for the same golf day, and until anyone
+  //    reports it open again (a frost delay that lifts at 11 shouldn't keep
+  //    the putting green "closed" all day just because the 11 AM report
+  //    only rated the range).
+  const closure = reports.find((r) => !r.placeOpen);
+  if (closure && !beforeSeason(closure)) {
+    const reopened = reports.some((r) => r.placeOpen && r.createdAt > closure.createdAt);
+    if (!reopened && golfDay(new Date(closure.createdAt)) === golfDay(now)) {
+      return {
+        area,
+        state: "closed",
+        basis: "report",
+        reason: `Reported closed today, ${ageLabel(now.getTime() - new Date(closure.createdAt).getTime())}`,
+        reportedAt: closure.createdAt,
+        conflict: false,
+      };
+    }
+  }
+
+  // 2. Otherwise the newest explicit rating of this area. Closure reports say
+  //    nothing about a single area, so they never hide an older rating (an
+  //    expired closure used to wipe out "chipping roped off" from the day before).
+  const latest = reports.find((r) => r.placeOpen && r.areas[area.id] !== undefined);
+
+  if (latest && !beforeSeason(latest)) {
+    const value = latest.areas[area.id];
     const created = new Date(latest.createdAt);
     const age = now.getTime() - created.getTime();
     const ago = ageLabel(age);
-    const createdDay = chicagoParts(created).dateKey;
-    const beforeSeason = season !== undefined && createdDay < season.from;
 
+    // Two ratings of this area close together that disagree. (A closure
+    // followed by "open, range good" is a change, not a disagreement.)
     const conflict = reports.some(
       (r) =>
         r !== latest &&
-        created.getTime() - new Date(r.createdAt).getTime() <= WINDOWS.conflict &&
+        r.placeOpen &&
+        r.areas[area.id] !== undefined &&
+        r.areas[area.id] !== value &&
         new Date(r.createdAt) <= created &&
-        valueFor(r, area.id) !== undefined &&
-        valueFor(r, area.id) !== value,
+        created.getTime() - new Date(r.createdAt).getTime() <= WINDOWS.conflict,
     );
     const fromReport = (state: AreaState, basis: Basis, reason: string): AreaStatus => ({
       area,
@@ -135,17 +162,12 @@ function areaStatus(
       conflict,
     });
 
-    if (!beforeSeason) {
-      if (!latest.placeOpen) {
-        // An unexpected closure ("closed for maintenance") holds for that day only.
-        if (createdDay === today) return fromReport("closed", "report", `Reported closed today, ${ago}`);
-      } else if (value === "good") {
-        if (age < WINDOWS.good) return fromReport("open", "report", `Reported good ${ago}`);
-      } else if (age < WINDOWS.problemFresh) {
-        return fromReport(stateOf[value], "report", `Reported ${conditionWord[value]} ${ago}`);
-      } else if (age < WINDOWS.problem) {
-        return fromReport(stateOf[value], "likely", `Probably still ${conditionWord[value]}: reported ${ago}`);
-      }
+    if (value === "good") {
+      if (age < WINDOWS.good) return fromReport("open", "report", `Reported good ${ago}`);
+    } else if (age < WINDOWS.problemFresh) {
+      return fromReport(stateOf[value], "report", `Reported ${conditionWord[value]} ${ago}`);
+    } else if (age < WINDOWS.problem) {
+      return fromReport(stateOf[value], "likely", `Probably still ${conditionWord[value]}: reported ${ago}`);
     }
   }
 
@@ -158,7 +180,7 @@ function areaStatus(
 // if it's never been reported (the tile then just names the area; saying
 // "no reports yet" on every tile repeated what the summary card already says).
 function lastReport(reports: Report[], area: Area, now: Date): string {
-  const latest = reports.find((r) => valueFor(r, area.id) !== undefined);
+  const latest = reports.find((r) => r.placeOpen && r.areas[area.id] !== undefined);
   return latest ? `Last report ${ageLabel(now.getTime() - new Date(latest.createdAt).getTime())}` : "";
 }
 

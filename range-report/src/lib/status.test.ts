@@ -196,6 +196,35 @@ describe("conflicting and odd reports", () => {
     expect(s.reportsThisWeek).toBe(1);
   });
 
+  it("ends a closure for every area as soon as someone reports the place open", () => {
+    // Frost delay: "closed" at 9, then "open, range good" at 11 that skips the other areas.
+    const closed9 = report(ago(5 * HOUR), { placeOpen: false });
+    const open11 = report(ago(3 * HOUR), { areas: { range: "good" } });
+    const s = placeStatus(range, [open11, closed9], SAT_2PM);
+    expect(area(s, "range")).toMatchObject({ state: "open", basis: "report", conflict: false });
+    expect(area(s, "putting")).toMatchObject({ state: "open", basis: "hours" }); // not "closed today"
+  });
+
+  it("doesn't let an expired closure hide an older rating of an area", () => {
+    // Thursday: chipping roped off. Friday: closed when they got there. Saturday: probably still roped off.
+    const thu = report(ago(2 * DAY), { areas: { chipping: "closed" } });
+    const fri = report(ago(DAY), { placeOpen: false });
+    const s = placeStatus(range, [fri, thu], SAT_2PM);
+    expect(area(s, "chipping")).toMatchObject({ state: "closed", basis: "likely" });
+    expect(area(s, "range")).toMatchObject({ state: "open", basis: "hours" });
+  });
+
+  it("keeps a late-night closure past midnight at a place open late", () => {
+    const late: Place = { ...range, hours: [{ days: [5], open: "06:00", close: "01:00" }] }; // Fri 6 AM – 1 AM
+    const fri1130pm = new Date("2026-11-14T05:30:00Z"); // Fri Nov 13, 11:30 PM Chicago
+    const closure = report(fri1130pm, { placeOpen: false });
+    const sat1230am = new Date("2026-11-14T06:30:00Z"); // still Friday's session
+    expect(area(placeStatus(late, [closure], sat1230am), "range")).toMatchObject({ state: "closed", basis: "report" });
+    // Next golf day (after 4 AM) it no longer applies.
+    const sat10am = new Date("2026-11-14T16:00:00Z");
+    expect(area(placeStatus(range, [closure], sat10am), "range").basis).toBe("hours");
+  });
+
   it("counts a report a few minutes 'ahead' of the browser clock (just posted)", () => {
     // The browser clock ticks every 30 s and can run slow; the report's time is the database's.
     const justPosted = report(ago(-40_000), { areas: { chipping: "closed" } }); // 40 s "ahead"
