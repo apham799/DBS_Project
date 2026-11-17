@@ -51,7 +51,8 @@ function RatingChip({ condition, count, latest }: { condition: Condition; count?
     <span
       className={cx(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-label",
-        count === 0 ? "border-rule bg-surface text-muted" : stateTone[state],
+        // Never picked: grayed out, so the options golfers actually chose stand out.
+        count === 0 ? "border-rule bg-disabled-bg text-disabled" : stateTone[state],
         latest && "ring-2 ring-current ring-offset-1",
       )}
     >
@@ -119,7 +120,7 @@ export function AreaTile({ status, trend, now, highlight }: { status: AreaStatus
                     {CONDITIONS.map((c) => (
                       <li key={c}>
                         <RatingChip condition={c} count={trend.counts[c]} latest={c === trend.latest} />
-                        <span className="sr-only">{trend.counts[c] === 1 ? " time" : " times"}{c === trend.latest ? ", the latest rating" : ""}</span>
+                        <span className="sr-only">{trend.counts[c] === 0 ? " times, not reported" : trend.counts[c] === 1 ? " time" : " times"}{c === trend.latest ? ", the latest rating" : ""}</span>
                       </li>
                     ))}
                   </ul>
