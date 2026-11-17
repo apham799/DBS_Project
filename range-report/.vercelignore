@@ -1,0 +1,5 @@
+# The app project (Root Directory = range-report) uses this file instead of the
+# repo-root .vercelignore, which hides this folder from the proposal project.
+.env*
+node_modules
+.next
