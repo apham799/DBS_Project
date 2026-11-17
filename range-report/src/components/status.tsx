@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import { cx } from "@/components/ui";
 import type { HoursNow } from "@/lib/hours";
 import { ageLabel, type AreaState, type AreaStatus, type PlaceStatus } from "@/lib/status";
@@ -205,11 +208,31 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
   );
 }
 
+// "How sure is this?" opens as a small floating panel over the page instead
+// of pushing everything below it down. Esc or a click anywhere else closes it.
 export function Legend() {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const outside = (e: PointerEvent) => el.open && !el.contains(e.target as Node) && (el.open = false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !el.open) return;
+      el.open = false;
+      el.querySelector("summary")?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", esc);
+    };
+  }, []);
+
   return (
-    <details className="text-label text-muted">
+    <details ref={ref} className="relative text-label text-muted">
       <summary className="cursor-pointer rounded-sm font-semibold text-ink">How sure is this?</summary>
-      <ul className="mt-2 flex flex-col gap-1 font-normal">
+      <ul className="absolute left-0 top-full z-20 mt-2 flex w-max max-w-[calc(100vw-2rem)] flex-col gap-1.5 rounded-lg border border-rule bg-surface p-4 font-normal shadow-lift">
         <li><span className="mr-2 inline-block h-3 w-6 rounded-sm border-2 border-ink align-middle" />Solid: a golfer reported it in the last day</li>
         <li><span className="mr-2 inline-block h-3 w-6 rounded-sm border-2 border-dashed border-ink align-middle" />Dashed: reported this week, probably still true</li>
         <li><span className="mr-2 inline-block h-3 w-6 rounded-sm border-2 border-dotted border-ink align-middle" />Dotted: the place&apos;s published season, or the weather</li>
