@@ -198,14 +198,14 @@ export function PlaceView({ placeId }: { placeId: string }) {
         <Legend />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="flex flex-col gap-6 lg:col-span-7">
-        {ready && <SummaryCard place={place} reports={reports} now={now} />}
-        <section className="flex flex-col gap-3" aria-labelledby="recent">
-          <h2 id="recent" className="text-heading">Recent reports</h2>
-          {loaded && recent.length === 0 && (
-            <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
-          )}
+      {ready && <SummaryCard place={place} reports={reports} now={now} />}
+
+      <section className="flex flex-col gap-3" aria-labelledby="recent">
+        <h2 id="recent" className="text-heading">Recent reports</h2>
+        {loaded && recent.length === 0 && (
+          <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
+        )}
+        {recent.length > 0 && (
           <ol className="flex flex-col divide-y divide-rule rounded-lg border border-rule">
             {recent.map((r) => (
               <li key={r.id} className="flex flex-col gap-0.5 px-4 py-3">
@@ -217,23 +217,29 @@ export function PlaceView({ placeId }: { placeId: string }) {
               </li>
             ))}
           </ol>
-        </section>
-        </div>
+        )}
+      </section>
 
-        <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
+      {/* Reference, not the main event: a short full-width strip at the bottom.
+          On wide screens the hours, the seasons and the "checked" line sit side
+          by side, so it's only as tall as its longest part. */}
+      <Card tone="cream" as="section" className="flex flex-col gap-3" labelledBy="published">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 id="published" className="text-heading">Published info</h2>
+          <p className="text-label font-normal text-muted">Checked Nov 16, 2026. A golfer&apos;s report always beats these.</p>
+        </div>
+        <div className="grid gap-x-8 gap-y-2 md:grid-cols-2">
           <p className="text-body">{place.hoursNote}</p>
           {place.seasons.length > 0 && (
             <ul className="list-disc pl-5 text-body">
               {place.seasons.map((s) => <li key={s.from + s.note}>{s.note}</li>)}
             </ul>
           )}
-          <p className="text-label font-normal text-muted">Checked Nov 16, 2026. A golfer&apos;s report always beats these.</p>
-          <a href={place.website} target="_blank" rel="noopener noreferrer" className="w-fit rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
-            Their website
-          </a>
-        </Card>
-      </div>
+        </div>
+        <a href={place.website} target="_blank" rel="noopener noreferrer" className="w-fit rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
+          Their website
+        </a>
+      </Card>
 
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
