@@ -82,7 +82,14 @@ function areaStatus(
 ): AreaStatus {
   const base = { area, reportedAt: null, conflict: false };
 
-  if (!hours.open) return { ...base, state: "closed", basis: "hours", reason: hours.label };
+  // Closed by its hours: the whole place is closed, which the hours badge
+  // already says. The reason says what's known about this area for when it
+  // reopens instead ("Reported good 2 h ago", the season), not "closed" again.
+  if (!hours.open) {
+    const known = areaStatus(place, area, reports, now, { ...hours, open: true }, null);
+    const reason = known.basis === "hours" ? lastReport(reports, area, now) : known.reason;
+    return { ...known, state: "closed", basis: "hours", reason };
+  }
 
   if (area.outdoor && weather?.stormNow) {
     return { ...base, state: "closed", basis: "weather", reason: "Thunderstorm nearby: outdoor areas usually close" };
@@ -133,8 +140,15 @@ function areaStatus(
 
   if (season) return { ...base, state: season.condition, basis: "season", reason: season.note };
 
-  const last = latest ? `last report ${ageLabel(now.getTime() - new Date(latest.createdAt).getTime())}` : "no reports yet";
-  return { ...base, state: "open", basis: "hours", reason: `Open by its hours · ${last}` };
+  return { ...base, state: "open", basis: "hours", reason: lastReport(reports, area, now) };
+}
+
+// For an area nothing current is known about: "Last report 9 days ago", or ""
+// if it's never been reported (the tile then just names the area; saying
+// "no reports yet" on every tile repeated what the summary card already says).
+function lastReport(reports: Report[], area: Area, now: Date): string {
+  const latest = reports.find((r) => valueFor(r, area.id) !== undefined);
+  return latest ? `Last report ${ageLabel(now.getTime() - new Date(latest.createdAt).getTime())}` : "";
 }
 
 export function placeStatus(place: Place, allReports: Report[], now: Date, weather: WeatherNow = null): PlaceStatus {

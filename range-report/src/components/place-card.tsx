@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AreaDots, crowdWord, headline } from "@/components/status";
+import { AreaDots, crowdWord, headline, hoursCardTone, HoursBadge, hoursTone, NoDataIcon } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
 import type { Place } from "@/lib/types";
@@ -47,7 +47,8 @@ export function PlaceCard({
   return (
     <li
       className={cx(
-        "relative flex flex-col gap-3 rounded-lg border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
+        "relative flex flex-col gap-3 rounded-lg border p-5 shadow-card transition-shadow hover:shadow-lift",
+        hoursCardTone[hoursTone(status.hours)],
         highlight ? "border-green" : "border-rule",
       )}
     >
@@ -70,12 +71,22 @@ export function PlaceCard({
         )}
       </div>
 
-      <p className="text-body font-semibold">{headline(status)}</p>
+      <div className="flex flex-col gap-1.5">
+        <HoursBadge hours={status.hours} />
+        {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
+      </div>
       <AreaDots status={status} />
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-label font-normal text-muted">
         {status.crowd && <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>}
-        <span>{status.lastReportAt ? `Last report ${ageLabel(now.getTime() - new Date(status.lastReportAt).getTime())}` : "No reports yet"}</span>
+        {status.lastReportAt ? (
+          <span>Last report {ageLabel(now.getTime() - new Date(status.lastReportAt).getTime())}</span>
+        ) : (
+          <span className="inline-flex items-center gap-1">
+            <NoDataIcon className="size-4" />
+            No reports yet
+          </span>
+        )}
         {weather && (
           <span>
             {weather.tempF}°F · {weather.label}

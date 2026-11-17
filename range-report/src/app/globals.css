@@ -47,6 +47,14 @@
   --color-limited-tint: #f6ecd2;
   --color-closed: #4a5563; /* 7.6:1 */
   --color-closed-tint: #e7e9ed;
+  /* Hours: open / closes within the hour / closed. Bright hues used only as
+     light, see-through tints (bg-hours-green/15); the words on them use the
+     dark inks so they keep 6:1+ contrast. Red here means "closed right now",
+     which is why it's softer than the error red used for things that failed. */
+  --color-hours-green: #22a05a;
+  --color-hours-yellow: #f2c230;
+  --color-hours-red: #e0483c;
+  --color-hours-red-ink: #93291f; /* 7.4:1 on its tint */
   --color-disabled-bg: #f1ede4;
 
   /* The drop shadows from Assignment 2, kept by request */

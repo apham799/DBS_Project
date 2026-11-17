@@ -3,14 +3,17 @@ import type { Place } from "./types";
 
 const WEEK = 7 * 1440;
 
-export type HoursNow = { open: boolean; label: string };
+// closingSoon: open now, but closes within CLOSING_SOON_MIN minutes.
+export type HoursNow = { open: boolean; closingSoon: boolean; label: string };
+
+export const CLOSING_SOON_MIN = 60;
 
 // Is the place open right now by its published hours, and what should we say?
 // Works in "minutes since Sunday midnight, Chicago time" so overnight hours
 // (close before open) and the Saturday → Sunday wrap need no special dates.
 export function hoursNow(hours: Place["hours"], now: Date): HoursNow {
-  if (hours === "24/7") return { open: true, label: "Open 24/7" };
-  if (hours.length === 0) return { open: false, label: "Hours not published" };
+  if (hours === "24/7") return { open: true, closingSoon: false, label: "Open 24/7" };
+  if (hours.length === 0) return { open: false, closingSoon: false, label: "Hours not published" };
 
   const { weekday, minutes } = chicagoParts(now);
   const t = weekday * 1440 + minutes;
@@ -30,11 +33,16 @@ export function hoursNow(hours: Place["hours"], now: Date): HoursNow {
   }
 
   const current = intervals.find((i) => i.start <= t && t < i.end);
-  if (current) return { open: true, label: `Open until ${clockLabel(current.end)}` };
+  if (current) {
+    const left = current.end - t;
+    return left <= CLOSING_SOON_MIN
+      ? { open: true, closingSoon: true, label: `Closes in ${left} min · ${clockLabel(current.end)}` }
+      : { open: true, closingSoon: false, label: `Open until ${clockLabel(current.end)}` };
+  }
 
   const next = intervals.filter((i) => i.start > t).sort((a, b) => a.start - b.start)[0];
-  if (!next) return { open: false, label: "Closed" };
+  if (!next) return { open: false, closingSoon: false, label: "Closed" };
   const sameDay = Math.floor(next.start / 1440) === Math.floor(t / 1440);
   const day = weekdayLabel(Math.floor(next.start / 1440));
-  return { open: false, label: `Closed · opens ${sameDay ? "" : `${day} `}${clockLabel(next.start)}` };
+  return { open: false, closingSoon: false, label: `Closed · opens ${sameDay ? "" : `${day} `}${clockLabel(next.start)}` };
 }

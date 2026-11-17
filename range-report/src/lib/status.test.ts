@@ -55,7 +55,7 @@ describe("the quiz case: Saturday 2 PM, last report 4 days ago", () => {
 
   it("falls back to hours for the range: 'good' doesn't last 4 days", () => {
     expect(area(s, "range")).toMatchObject({ state: "open", basis: "hours" });
-    expect(area(s, "range").reason).toContain("last report 4 days ago");
+    expect(area(s, "range").reason).toBe("Last report 4 days ago");
   });
 
   it("does not show Wednesday's crowd on Saturday", () => {
@@ -96,7 +96,7 @@ describe("how long reports last", () => {
 
   it("an area nobody mentioned keeps its own status", () => {
     const s = placeStatus(range, [report(ago(HOUR), { areas: { chipping: "closed" } })], SAT_2PM);
-    expect(area(s, "putting")).toMatchObject({ state: "open", basis: "hours", reason: "Open by its hours · no reports yet" });
+    expect(area(s, "putting")).toMatchObject({ state: "open", basis: "hours", reason: "" });
   });
 });
 
@@ -205,8 +205,30 @@ describe("conflicting and odd reports", () => {
 
 describe("published hours", () => {
   it("say when it closes and when it next opens", () => {
-    expect(hoursNow(range.hours, SAT_2PM)).toEqual({ open: true, label: "Open until 6 PM" });
-    expect(hoursNow(range.hours, new Date("2026-11-14T11:00:00Z"))).toEqual({ open: false, label: "Closed · opens 6 AM" });
+    expect(hoursNow(range.hours, SAT_2PM)).toEqual({ open: true, closingSoon: false, label: "Open until 6 PM" });
+    expect(hoursNow(range.hours, new Date("2026-11-14T11:00:00Z"))).toEqual({ open: false, closingSoon: false, label: "Closed · opens 6 AM" });
+  });
+
+  it("when the place is closed, say what's known about each area instead of 'closed' again", () => {
+    const night = new Date("2026-11-15T04:00:00Z"); // Sat 10 PM, closed since 6
+    const r = { id: "n1", placeId: range.id, createdAt: new Date(night.getTime() - 5 * HOUR).toISOString(), placeOpen: true, areas: { range: "good" as const, chipping: "closed" as const }, crowd: null };
+    const s = placeStatus(range, [r], night);
+    expect(s.areas.every((a) => a.state === "closed" && a.basis === "hours")).toBe(true);
+    expect(area(s, "range").reason).toBe("Reported good 5 h ago");
+    expect(area(s, "chipping").reason).toBe("Reported closed 5 h ago");
+    expect(area(s, "putting").reason).toBe("");
+  });
+
+  it("say when a place closes within the hour", () => {
+    // Closes at 6 PM Chicago = 00:00 UTC Nov 15.
+    expect(hoursNow(range.hours, new Date("2026-11-14T22:59:00Z"))).toMatchObject({ open: true, closingSoon: false }); // 4:59, 61 min left
+    expect(hoursNow(range.hours, new Date("2026-11-14T23:00:00Z"))).toEqual({ open: true, closingSoon: true, label: "Closes in 60 min · 6 PM" });
+    expect(hoursNow(range.hours, new Date("2026-11-14T23:45:00Z")).label).toBe("Closes in 15 min · 6 PM");
+    expect(hoursNow(range.hours, new Date("2026-11-15T00:00:00Z"))).toMatchObject({ open: false, closingSoon: false }); // 6 PM sharp
+    // Overnight hours count down across midnight; 24/7 never closes.
+    const late = [{ days: [6], open: "10:00", close: "01:00" }];
+    expect(hoursNow(late, new Date("2026-11-15T06:30:00Z"))).toMatchObject({ open: true, closingSoon: true }); // Sun 12:30 AM
+    expect(hoursNow("24/7", new Date("2026-11-15T05:59:00Z")).closingSoon).toBe(false);
   });
 
   it("handle hours past midnight, including Saturday into Sunday", () => {
@@ -216,7 +238,7 @@ describe("published hours", () => {
   });
 
   it("handle 24/7 and missing hours", () => {
-    expect(hoursNow("24/7", SAT_2PM)).toEqual({ open: true, label: "Open 24/7" });
+    expect(hoursNow("24/7", SAT_2PM)).toEqual({ open: true, closingSoon: false, label: "Open 24/7" });
     expect(hoursNow([], SAT_2PM).open).toBe(false);
   });
 });

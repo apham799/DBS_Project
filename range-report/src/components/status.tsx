@@ -1,6 +1,6 @@
 import { cx } from "@/components/ui";
+import type { HoursNow } from "@/lib/hours";
 import type { AreaState, AreaStatus, PlaceStatus } from "@/lib/status";
-import type { Crowd } from "@/lib/types";
 
 // How each area's status looks. Color, an icon and a word always go together.
 // The border says how sure we are:
@@ -17,7 +17,8 @@ const stateTone: Record<AreaState, string> = {
   closed: "bg-closed-tint text-closed border-closed",
 };
 
-export const crowdWord: Record<Crowd, string> = { quiet: "Walk right in", some_wait: "Short wait", busy: "Packed" };
+// Shared with the summary (lib/summary.ts), so a crowd reads the same everywhere.
+export { crowdWord } from "@/lib/summary";
 
 export function StateIcon({ state, className = "size-4" }: { state: AreaState; className?: string }) {
   return (
@@ -35,7 +36,8 @@ export function AreaTile({ status, highlight }: { status: AreaStatus; highlight?
   return (
     <li
       className={cx(
-        "flex min-h-28 flex-col gap-2 rounded-lg border-2 p-4 transition-shadow",
+        "flex flex-col gap-2 rounded-lg border-2 p-4 transition-shadow",
+        known && "min-h-28",
         known ? stateTone[state] : "border-rule bg-surface text-ink",
         basis === "likely" && "border-dashed",
         (basis === "season" || basis === "weather") && "border-dotted",
@@ -46,31 +48,70 @@ export function AreaTile({ status, highlight }: { status: AreaStatus; highlight?
         <p className="text-heading text-ink">{area.label}</p>
         {conflict && <span className="rounded-full border border-current px-2 text-label">Reports differ</span>}
       </div>
-      <p className="flex items-center gap-1.5 text-body font-semibold">
-        <StateIcon state={state} />
-        {basis === "likely" ? `Probably ${stateWord[state].toLowerCase()}` : stateWord[state]}
-        {!known && <span className="font-normal text-muted">· by its hours</span>}
-      </p>
-      <p className="text-label font-normal text-muted">{reason}</p>
+      {/* Nothing known beyond the hours: no icon or state word. The hours badge
+          at the top already says open or closed; repeating it on every tile was noise. */}
+      {known ? (
+        <p className="flex items-center gap-1.5 text-body font-semibold">
+          <StateIcon state={state} />
+          {basis === "likely" ? `Probably ${stateWord[state].toLowerCase()}` : stateWord[state]}
+        </p>
+      ) : (
+        <span className="sr-only">{stateWord[state]} by its hours.</span>
+      )}
+      {reason && <p className="text-label font-normal text-muted">{reason}</p>}
     </li>
   );
 }
 
-// One line for a place card: what's usable right now.
-export function headline(s: PlaceStatus): string {
-  if (!s.hours.open) return s.hours.label;
+// Open, closing within the hour, or closed, by the published hours.
+export type HoursTone = "open" | "soon" | "closed";
+export const hoursTone = (h: HoursNow): HoursTone => (!h.open ? "closed" : h.closingSoon ? "soon" : "open");
+
+const hoursBadgeTone: Record<HoursTone, string> = {
+  open: "border-hours-green/35 bg-hours-green/15 text-open",
+  soon: "border-hours-yellow/60 bg-hours-yellow/25 text-limited",
+  closed: "border-hours-red/30 bg-hours-red/12 text-hours-red-ink",
+};
+
+// A whole place card, washed with the same color very lightly.
+export const hoursCardTone: Record<HoursTone, string> = {
+  open: "bg-hours-green/[0.06]",
+  soon: "bg-hours-yellow/[0.12]",
+  closed: "bg-hours-red/[0.05]",
+};
+
+export function HoursBadge({ hours }: { hours: HoursNow }) {
+  const tone = hoursTone(hours);
+  return (
+    <span className={cx("inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-label font-semibold", hoursBadgeTone[tone])}>
+      <span className="size-2 rounded-full bg-current" aria-hidden />
+      {hours.label}
+    </span>
+  );
+}
+
+// One line for a place card: what's usable right now. The hours badge above it
+// already says open or closed, so this is only about the areas (null when the
+// place is closed: there's nothing more to say).
+export function headline(s: PlaceStatus): string | null {
+  if (!s.hours.open) return null;
   const count = (st: AreaState) => s.areas.filter((a) => a.state === st && a.basis !== "hours").length;
-  const closed = s.areas.filter((a) => a.state === "closed").length;
-  if (closed === s.areas.length) return "Everything closed";
+  if (s.areas.every((a) => a.state === "closed")) return "Every area closed";
   const parts = [
     count("closed") && `${count("closed")} closed`,
     count("limited") && `${count("limited")} limited`,
     count("open") && `${count("open")} reported open`,
   ].filter(Boolean);
-  return parts.length ? `Open · ${parts.join(" · ")}` : `${s.hours.label} · no recent reports`;
+  return parts.length ? `Areas: ${parts.join(" · ")}` : "No recent reports on the areas";
 }
 
-// A row of small squares, one per area: the place card's mini heat map.
+// A row of small chips, one per area: the place card's mini heat map.
+//
+// Only areas we know something about (a report, the season, the weather) get a
+// color, an icon and a word. The rest are plain chips that just say the area
+// exists: an ✕ on "Chipping area" at night read as "no chipping area here",
+// when it only meant "the place is closed right now", which the headline
+// above already says.
 export function AreaDots({ status }: { status: PlaceStatus }) {
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label="Areas">
@@ -86,9 +127,13 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
               (a.basis === "season" || a.basis === "weather") && "border-dotted",
             )}
           >
-            <StateIcon state={a.state} className="size-3.5" />
+            {known && <StateIcon state={a.state} className="size-3.5" />}
             <span className="text-ink">{a.area.label}</span>
-            <span className="sr-only">: {a.basis === "likely" ? "probably " : ""}{stateWord[a.state]}{known ? "" : " by its hours"}</span>
+            {known ? (
+              <span className="font-semibold">{a.basis === "likely" ? "probably " : ""}{stateWord[a.state].toLowerCase()}</span>
+            ) : (
+              <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>
+            )}
           </li>
         );
       })}
@@ -107,5 +152,31 @@ export function Legend() {
         <li><span className="mr-2 inline-block h-3 w-6 rounded-sm border-2 border-rule align-middle" />Plain: nothing known beyond its hours</li>
       </ul>
     </details>
+  );
+}
+
+// "Not enough reports yet": three empty bars. Used only for that, so it never
+// gets confused with a condition (those have their own colors and icons).
+export function NoDataIcon({ className = "size-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={cx("shrink-0", className)} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+      <rect x="2.5" y="11" width="3.5" height="6" rx="0.8" strokeDasharray="2 1.6" />
+      <rect x="8.25" y="7" width="3.5" height="10" rx="0.8" strokeDasharray="2 1.6" />
+      <rect x="14" y="3" width="3.5" height="14" rx="0.8" strokeDasharray="2 1.6" />
+    </svg>
+  );
+}
+
+// "● ○  1 of 2": how close a place is to having enough reports.
+export function Progress({ have, need, label }: { have: number; need: number; label: string }) {
+  return (
+    <p className="flex items-center gap-2 text-label text-muted">
+      <span className="flex gap-1" aria-hidden>
+        {Array.from({ length: need }, (_, i) => (
+          <span key={i} className={cx("size-2.5 rounded-full border-2 border-muted", i < have && "bg-muted")} />
+        ))}
+      </span>
+      {label}
+    </p>
   );
 }
