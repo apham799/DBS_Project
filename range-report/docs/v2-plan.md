@@ -1,6 +1,6 @@
 # Range Report: plan for v2 (fair on Dec 1, 2026)
 
-Written Nov 17, 2026, the day v1 shipped. Based on the project proposal's roadmap, the TA's feedback ("less, done well"; check in with users at checkpoints) and a classmate's (a heat map of each facility).
+Written Nov 17, 2026, the day v1 shipped. Based on the project proposal's roadmap, the TA's feedback ("less, done well"; check in with users at checkpoints) and a heat map of each facility.
 
 ## Where v1 stands
 
