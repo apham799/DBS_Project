@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState } from "react";
+import { useId, useState } from "react";
 import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon, SettingBadge } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
@@ -50,18 +50,6 @@ export function PlaceCard({
 }) {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
-  // Whether the name is cut off ("…"): then the opened details start with it
-  // in full. Watched, since it changes with the card's width.
-  const [cut, setCut] = useState(false);
-  const watchName = useCallback((h: HTMLHeadingElement | null) => {
-    if (!h) return;
-    const a = h.querySelector("a");
-    const check = () => setCut(!!a && a.getBoundingClientRect().width > h.getBoundingClientRect().width + 1);
-    const ro = new ResizeObserver(check);
-    ro.observe(h);
-    check();
-    return () => ro.disconnect();
-  }, []);
   const edge = highlight ? "border-green" : "border-rule";
   // Cards in a row line up: each one is a subgrid over the list's rows (name,
   // hours badge, Details, opened details), so a name that wraps onto two lines
@@ -80,11 +68,10 @@ export function PlaceCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           {/* One line, with "…" if it's too long ("PGA TOUR Superstore Lincoln
-              Park"), so every card's top is the same height, opened or not;
-              the opened details show the full name. Clipped (not hidden) with
-              a margin, so the focus ring still shows; screen readers always
-              get the whole name. */}
-          <h3 ref={watchName} className="overflow-clip text-ellipsis whitespace-nowrap text-heading [overflow-clip-margin:4px]" title={cut ? place.name : undefined}>
+              Park"), so every card's top is the same height; opened, the full
+              name wraps. Clipped (not hidden) with a margin, so the focus ring
+              still shows; screen readers always get the whole name. */}
+          <h3 className={cx("text-heading", !open && "overflow-clip text-ellipsis whitespace-nowrap [overflow-clip-margin:4px]")} title={open ? undefined : place.name}>
             {/* The whole card is clickable through this link's ::after; the follow button sits above it. */}
             <Link href={`/places/${place.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-lg hover:underline">
               {place.name}
@@ -130,7 +117,6 @@ export function PlaceCard({
       <div className="pb-4">
       <div id={detailsId} hidden={!open} className={cx("relative flex flex-col gap-3 rounded-b-lg border border-t-0 bg-surface px-5 pb-5 shadow-card", edge)}>
         <div className="flex flex-col gap-3 border-t border-rule pt-3">
-        {cut && <p className="font-display text-body font-semibold text-ink" aria-hidden>{place.name}</p>}
         {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
         <AreaDots status={status} />
         {status.crowd && <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>}
