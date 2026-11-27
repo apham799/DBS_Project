@@ -36,7 +36,10 @@ export function Hero({ live, placesOpen, onTogglePlaces, onFind }: { live?: Reac
           onClick={onTogglePlaces}
           aria-expanded={placesOpen}
           aria-controls="places-list"
-          className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-green/30 px-4 py-2 text-label font-semibold text-green transition-colors hover:border-green hover:bg-surface"
+          // Plain green text with a small arrow, at the bottom of the text side on
+          // wide screens (under the buttons on phones). Not a pill: it's a quiet
+          // control next to the main "Find a place" button.
+          className="inline-flex w-fit items-center gap-1.5 rounded-full px-1 py-1 text-label font-semibold text-green hover:underline lg:absolute lg:bottom-5 lg:left-14"
         >
           {placesOpen ? "Hide the places" : "See the places"}
           <svg
