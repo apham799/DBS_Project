@@ -116,7 +116,10 @@ function useOthersOpen(): [boolean, (open: boolean) => void] {
 
 // The list grid. No row gap: each card leaves its own space below it, so the
 // cards can share rows (see PlaceCard).
-const GRID = "grid gap-x-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+// As many columns as keep each card at least 28rem wide, so most names fit
+// on one line beside Follow (only the longest get "…").
+const COLUMNS = "grid-cols-[repeat(auto-fill,minmax(min(28rem,100%),1fr))]";
+const GRID = `grid ${COLUMNS} gap-x-4`;
 
 export function Home() {
   const { reports: allReports, loaded, error, live, justAdded, retry } = useReports();
@@ -230,7 +233,7 @@ export function Home() {
       <div id="places-list" className="flex flex-col gap-8">
       <PlaceFilters filters={filters} onChange={setFilters} shown={visible.length} total={places.length} />
       {!loaded || !statuses ? (
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
+        <ul className={cx("grid gap-4", COLUMNS)} aria-label="Loading places">
           {places.slice(0, 4).map((p) => (
             <li key={p.id}>
               <Skeleton className="h-44 w-full" />

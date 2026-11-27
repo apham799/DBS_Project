@@ -57,17 +57,21 @@ export function PlaceCard({
   // cards end level. The opened details sit in the fourth row, outside the
   // card's box, joined to it: only that card grows; its neighbors stay short.
   return (
-    <li className="rr-reveal row-span-4 grid grid-rows-subgrid gap-y-0">
+    <li className="rr-reveal row-span-4 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0">
       <div
         className={cx(
-          "relative row-span-3 grid grid-rows-subgrid gap-y-3 border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
+          "relative row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-3 border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
           open ? "rounded-t-lg border-b-0 pb-3" : "rounded-lg",
           edge,
         )}
       >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="text-heading">
+          {/* One line, with "…" if it's too long ("PGA TOUR Superstore Lincoln
+              Park"), so every card's top is the same height; opened, the full
+              name wraps. Clipped (not hidden) with a margin, so the focus ring
+              still shows; screen readers always get the whole name. */}
+          <h3 className={cx("text-heading", !open && "overflow-clip text-ellipsis whitespace-nowrap [overflow-clip-margin:4px]")} title={open ? undefined : place.name}>
             {/* The whole card is clickable through this link's ::after; the follow button sits above it. */}
             <Link href={`/places/${place.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-lg hover:underline">
               {place.name}
