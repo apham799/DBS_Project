@@ -144,7 +144,7 @@ export function Home() {
       weather={weather.status === "ok" ? weather.byPlace[p.id] : undefined}
       now={now}
       following={follows.following.has(p.id)}
-      onToggleFollow={follows.signedIn ? () => follows.toggle(p.id, p.name) : undefined}
+      onToggleFollow={() => follows.toggle(p.id, p.name)}
       highlight={justAdded.has(p.id)}
     />
   );

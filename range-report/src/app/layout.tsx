@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Libre_Franklin, Playfair_Display } from "next/font/google";
 import { Suspense } from "react";
 import { Header } from "@/components/header";
+import { SignInPrompt } from "@/components/sign-in-prompt";
 import "./globals.css";
 
 // Two typefaces: Playfair Display for headings (high contrast, editorial), Libre
@@ -30,6 +31,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </a>
           <Suspense fallback={<div className="h-16 border-b border-cream-deep bg-cream" />}>
             <Header />
+          </Suspense>
+          {/* The one "sign in to do this" pop-up, opened from anywhere with askToSignIn(). */}
+          <Suspense fallback={null}>
+            <SignInPrompt />
           </Suspense>
           <main id="main" className="w-full px-4 pb-20 pt-4 sm:px-6 sm:pt-6 lg:px-10 2xl:px-16">
             {children}

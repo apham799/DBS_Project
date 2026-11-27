@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { askToSignIn, PENDING_FOLLOW_KEY } from "@/components/sign-in-prompt";
 import { useDb } from "./db";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -17,10 +18,23 @@ export function useFollows() {
     let cancelled = false;
     db.from("follows")
       .select("place_id")
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
-        if (error) setError("Couldn't load the places you follow.");
-        else setFollowing(new Set((data as { place_id: string }[]).map((f) => f.place_id)));
+        if (error) {
+          setError("Couldn't load the places you follow.");
+          return;
+        }
+        const set = new Set((data as { place_id: string }[]).map((f) => f.place_id));
+        // A follow asked for before signing in: apply it now.
+        const pending = sessionStorage.getItem(PENDING_FOLLOW_KEY);
+        if (pending) {
+          sessionStorage.removeItem(PENDING_FOLLOW_KEY);
+          if (!set.has(pending)) {
+            const { error: e } = await db.from("follows").insert({ place_id: pending });
+            if (!e || e.code === "23505") set.add(pending);
+          }
+        }
+        if (!cancelled) setFollowing(set);
       });
     return () => {
       cancelled = true;
@@ -33,7 +47,13 @@ export function useFollows() {
 
   const toggle = useCallback(
     async (placeId: string, name: string) => {
-      if (!userId || busy.current.has(placeId)) return;
+      // Signed out: remember what they wanted and ask them to sign in.
+      if (!userId) {
+        sessionStorage.setItem(PENDING_FOLLOW_KEY, placeId);
+        askToSignIn({ title: `Follow ${name}`, reason: "Sign in or sign up to follow places. We'll follow this one for you as soon as you're in." });
+        return;
+      }
+      if (busy.current.has(placeId)) return;
       busy.current.add(placeId);
       setError(null);
       const was = following.has(placeId);

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
+import { askToSignIn } from "@/components/sign-in-prompt";
 import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
@@ -83,7 +84,18 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
         <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
       </Show>
       <Show when="signed-out">
-        <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${placeId}/report`)}`} size={size}>Sign in to post a report</ButtonLink>
+        <Button
+          size={size}
+          onClick={() =>
+            askToSignIn({
+              title: "Post a report",
+              reason: "Sign in or sign up to post. It takes a few seconds, and your report goes straight into your own practice log too.",
+              next: `/places/${placeId}/report`,
+            })
+          }
+        >
+          {label}
+        </Button>
       </Show>
     </>
   );
@@ -210,9 +222,8 @@ export function PlaceView({ placeId }: { placeId: string }) {
               <span>{place.neighborhood} · {placeKindLabel(place)} · {place.address}</span>
             </p>
           </div>
-          {follows.signedIn && (
-            <FollowButton following={follows.following.has(place.id)} name={place.name} onToggle={() => follows.toggle(place.id, place.name)} />
-          )}
+          {/* Shown to guests too: tapping it asks them to sign in (and follows once they have). */}
+          <FollowButton following={follows.following.has(place.id)} name={place.name} onToggle={() => follows.toggle(place.id, place.name)} />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
