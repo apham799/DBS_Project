@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Button, cx } from "@/components/ui";
 import { chicagoParts, weekdayLabel } from "@/lib/chicago-time";
 import { useDb } from "@/lib/db";
@@ -102,13 +102,20 @@ export function AdminPanel({
     sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
   };
 
+  // "Edit first" / "Fill in the hours" open the update box and go to its form.
+  const updateBox = useRef<HTMLDetailsElement>(null);
+  const goTo = (id: string) => {
+    if (updateBox.current) updateBox.current.open = true;
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+
   const apply = (s: Suggestion) => {
     if (s.kind === "review") return endRule(s.ruleId);
     if (s.kind === "hours") {
       // Fill in the hours form with the closing time golfers mention, for the admin to check.
       setDays((ds) => ds.map((d) => (d.open ? { ...d, to: s.closesAt } : d)));
       setHoursNote(`Golfers report it closes at ${s.closesAt}`);
-      document.getElementById("admin-hours")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      goTo("admin-hours");
       return;
     }
     return confirmRule(s.rule);
@@ -117,31 +124,33 @@ export function AdminPanel({
   const editFirst = (s: Suggestion) => {
     if (s.kind !== "agree" && s.kind !== "season") return;
     setRule(s.rule);
-    document.getElementById("admin-rule")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    goTo("admin-rule");
   };
 
   return (
-    <details className="group rounded-xl border-2 border-dashed border-brass bg-cream/50">
+    <div className="flex flex-col gap-3">
+      {error && <Alert tone="error" title={error} onDismiss={() => setError(null)} />}
+      {done && <p className="text-label font-semibold text-open" role="status">{done}</p>}
+
+      {/* Box 1: what golfers' reports suggest changing. */}
+      <details className="group rounded-xl border-2 border-dashed border-brass bg-cream/50">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <span className="rounded-full bg-brass px-2.5 py-0.5 text-label font-semibold text-on-green">Admin</span>
-        <span className="text-heading">Update this place</span>
+        <span className="text-heading">Suggestions</span>
         {suggestions.length > 0 && (
           <span className="rounded-full border border-limited bg-limited-tint px-2.5 py-0.5 text-label font-semibold text-limited">
-            {suggestions.length} suggestion{suggestions.length === 1 ? "" : "s"}
+            {suggestions.length}
           </span>
         )}
         <svg viewBox="0 0 16 16" className="ml-auto size-5 text-muted transition-transform group-open:rotate-180" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 6 L8 10 L12 6" />
         </svg>
       </summary>
-
-      <div className="flex flex-col gap-6 border-t border-brass/40 px-5 py-5">
-        {error && <Alert tone="error" title={error} onDismiss={() => setError(null)} />}
-        {done && <p className="text-label font-semibold text-open" role="status">{done}</p>}
-
+        <div className="flex flex-col gap-3 border-t border-brass/40 px-5 py-5">
         {/* 1. Suggestions */}
         <section className="flex flex-col gap-3" aria-labelledby="admin-suggestions">
-          <h3 id="admin-suggestions" className="text-body font-semibold">Suggested from golfers&apos; reports</h3>
+          <h3 id="admin-suggestions" className="sr-only">Suggested from golfers&apos; reports</h3>
+          <p className="text-label font-normal text-muted">From golfers&apos; reports at this place. Nothing changes until you confirm.</p>
           {suggestions.length === 0 ? (
             <p className="text-body text-muted">Nothing to suggest: what golfers report matches what this place shows.</p>
           ) : (
@@ -168,6 +177,19 @@ export function AdminPanel({
           )}
         </section>
 
+        </div>
+      </details>
+
+      {/* Box 2: what's confirmed now, and the forms to change it. */}
+      <details ref={updateBox} className="group rounded-xl border-2 border-dashed border-brass bg-cream/50">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <span className="rounded-full bg-brass px-2.5 py-0.5 text-label font-semibold text-on-green">Admin</span>
+        <span className="text-heading">Update this place</span>
+        <svg viewBox="0 0 16 16" className="ml-auto size-5 text-muted transition-transform group-open:rotate-180" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6 L8 10 L12 6" />
+        </svg>
+      </summary>
+        <div className="flex flex-col gap-6 border-t border-brass/40 px-5 py-5">
         {/* 2. Confirmed now */}
         <section className="flex flex-col gap-3" aria-labelledby="admin-confirmed">
           <h3 id="admin-confirmed" className="text-body font-semibold">Confirmed statuses</h3>
@@ -278,7 +300,8 @@ export function AdminPanel({
             )}
           </div>
         </form>
-      </div>
-    </details>
+        </div>
+      </details>
+    </div>
   );
 }
