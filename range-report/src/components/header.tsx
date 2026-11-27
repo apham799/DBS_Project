@@ -30,8 +30,10 @@ export function Header() {
             <ButtonLink href="/log" variant="ghost" size="sm">
               My log
             </ButtonLink>
+            {/* Inside the signed-in check: outside it, the browser drew its
+                container while the server drew nothing (a hydration mismatch). */}
+            <UserButton />
           </Show>
-          <UserButton />
         </div>
       </div>
     </header>
