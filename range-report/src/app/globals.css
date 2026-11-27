@@ -188,3 +188,41 @@
   .rr-posted { animation: rr-posted 7s ease-out infinite; }
   .rr-ping { animation: rr-ping 1.8s ease-out infinite; transform-origin: center; transform-box: fill-box; }
 }
+
+/* Landing banner weather (components/weather-scene.tsx). The still picture
+   already shows the weather; these only make it move. */
+@keyframes rr-fall { from { transform: translate(0, 0); } to { transform: translate(0, 420px); } }
+@keyframes rr-fall-windy { from { transform: translate(0, 0); } to { transform: translate(-70px, 420px); } }
+@keyframes rr-cloud { from { transform: translateX(0); } to { transform: translateX(34px); } }
+@keyframes rr-cloud-windy { from { transform: translateX(-40px); } to { transform: translateX(70px); } }
+@keyframes rr-flutter { from { transform: scaleX(1) skewY(0deg); } to { transform: scaleX(0.78) skewY(-8deg); } }
+@keyframes rr-gust {
+  0% { transform: translateX(-220px); opacity: 0; }
+  15% { opacity: 0.55; }
+  70% { opacity: 0.55; }
+  100% { transform: translateX(760px); opacity: 0; }
+}
+@keyframes rr-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+@keyframes rr-fog { from { transform: translateX(-30px); } to { transform: translateX(30px); } }
+@keyframes rr-flash {
+  0%, 92%, 95%, 100% { opacity: 0; }
+  93% { opacity: 0.65; }
+  96.5% { opacity: 0.4; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rr-rain { animation: rr-fall 0.8s linear infinite; }
+  .rr-drizzle { animation: rr-fall 1.6s linear infinite; }
+  .rr-rain-windy { animation: rr-fall-windy 0.7s linear infinite; }
+  .rr-snow { animation: rr-fall 9s linear infinite; }
+  .rr-snow-windy { animation: rr-fall-windy 6s linear infinite; }
+  .rr-cloud { animation: rr-cloud 16s ease-in-out infinite alternate; }
+  .rr-cloud-windy { animation: rr-cloud-windy 6s ease-in-out infinite alternate; }
+  .rr-flutter { animation: rr-flutter 0.45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: left center; }
+  .rr-gust { animation: rr-gust 2.8s ease-in-out infinite; }
+  .rr-gust-2 { animation-delay: 0.9s; }
+  .rr-gust-3 { animation-delay: 1.8s; }
+  .rr-twinkle { animation: rr-twinkle 3s ease-in-out infinite; }
+  .rr-fog { animation: rr-fog 14s ease-in-out infinite alternate; }
+  .rr-fog-slow { animation: rr-fog 22s ease-in-out infinite alternate-reverse; }
+  .rr-flash { animation: rr-flash 7s linear infinite; }
+}

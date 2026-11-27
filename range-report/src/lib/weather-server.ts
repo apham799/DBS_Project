@@ -18,6 +18,7 @@ export type PlaceWeather = {
   code: number;
   label: string;
   stormNow: boolean;
+  isDay: boolean; // for the landing banner's day/night scene
 };
 
 // WMO weather codes, grouped the way a golfer cares about them.
@@ -41,7 +42,7 @@ export async function fetchWeather(): Promise<Record<string, PlaceWeather>> {
   url.search = new URLSearchParams({
     latitude: places.map((p) => p.lat).join(","),
     longitude: places.map((p) => p.lon).join(","),
-    current: "temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+    current: "temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
     temperature_unit: "fahrenheit",
     wind_speed_unit: "mph",
     precipitation_unit: "inch",
@@ -67,6 +68,7 @@ export async function fetchWeather(): Promise<Record<string, PlaceWeather>> {
       code: c.weather_code,
       label: weatherLabel(c.weather_code),
       stormNow: c.weather_code >= 95,
+      isDay: c.is_day !== 0,
     };
   });
   return out;

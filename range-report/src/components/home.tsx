@@ -131,6 +131,8 @@ export function Home() {
     <div className="flex flex-col gap-8">
       <Hero
         live={<LiveDot live={live} />}
+        // Diversey is central Chicago: its weather stands in for the city's.
+        weather={weather.status === "ok" ? weather.byPlace["diversey"] : undefined}
         placesOpen={placesOpen}
         onTogglePlaces={() => {
           setInstant(false);
