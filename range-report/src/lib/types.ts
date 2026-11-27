@@ -52,4 +52,5 @@ export type Report = {
   areas: Record<string, Condition>; // only the areas they reported on
   crowd: Crowd | null;
   note?: string | null; // public, optional, max 280 characters, no links
+  source?: "account" | "guest"; // posted signed in, or as a guest
 };

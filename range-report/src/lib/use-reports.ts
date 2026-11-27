@@ -16,7 +16,7 @@ import type { Condition, Crowd, Report } from "./types";
 
 const LOOKBACK_DAYS = 30;
 
-type Row = { id: string; place_id: string; created_at: string; place_open: boolean; areas: Record<string, Condition>; crowd: Crowd | null; note: string | null };
+type Row = { id: string; place_id: string; created_at: string; place_open: boolean; areas: Record<string, Condition>; crowd: Crowd | null; note: string | null; source?: "account" | "guest" };
 
 const toReport = (r: Row): Report => ({
   id: r.id,
@@ -26,6 +26,7 @@ const toReport = (r: Row): Report => ({
   areas: r.areas ?? {},
   crowd: r.crowd,
   note: r.note ?? null,
+  source: r.source ?? "account",
 });
 
 export type LiveStatus = "connecting" | "live" | "reconnecting";
@@ -70,7 +71,7 @@ export function useReports() {
     const since = new Date(Date.now() - LOOKBACK_DAYS * DAY).toISOString();
     const { data, error } = await db
       .from("reports")
-      .select("id, place_id, created_at, place_open, areas, crowd, note")
+      .select("id, place_id, created_at, place_open, areas, crowd, note, source")
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1000);

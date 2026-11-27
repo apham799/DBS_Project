@@ -5,8 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { askToSignIn } from "@/components/sign-in-prompt";
-import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
+import { AreaDetails, crowdWord, GuestTag, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
@@ -75,7 +74,8 @@ function AreaDialog({
   );
 }
 
-// Where to post from this page: the form if signed in, sign-in first if not.
+// Where to post from this page: the report form, for everyone (signed-out
+// golfers choose there between signing in and posting as a guest).
 // There's exactly one on the page, in the summary card (both versions of it).
 function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId: string; size?: "sm" | "lg"; label?: string }) {
   return (
@@ -84,18 +84,8 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
         <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
       </Show>
       <Show when="signed-out">
-        <Button
-          size={size}
-          onClick={() =>
-            askToSignIn({
-              title: "Post a report",
-              reason: "Sign in or sign up to post. It takes a few seconds, and your report goes straight into your own practice log too.",
-              next: `/places/${placeId}/report`,
-            })
-          }
-        >
-          {label}
-        </Button>
+        {/* The form itself offers signing in or posting as a guest. */}
+        <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
       </Show>
     </>
   );
@@ -317,8 +307,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
           <ol className="flex flex-col divide-y divide-rule rounded-lg border border-rule">
             {recent.map((r) => (
               <li key={r.id} className="flex flex-col gap-2 px-4 py-3">
-                <p className="text-label text-muted">
+                <p className="flex flex-wrap items-center gap-2 text-label text-muted">
                   {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
+                  {r.source === "guest" && <GuestTag />}
                 </p>
                 {/* Same chips as the place cards and My Log. */}
                 <ReportChips place={place} report={r} />

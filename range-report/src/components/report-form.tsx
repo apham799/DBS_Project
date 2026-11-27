@@ -1,6 +1,5 @@
 "use client";
 
-import { Show } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { POSTED_KEY } from "@/components/place-view";
@@ -97,7 +96,10 @@ function Choice<T extends string>({
 export function ReportForm({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
   const router = useRouter();
-  const { db } = useDb();
+  const { db, isLoaded, userId } = useDb();
+  // Signed out, they choose: sign in (and keep a private log) or post as a guest.
+  const [asGuest, setAsGuest] = useState(false);
+  const guest = !userId;
   const [open, setOpen] = useState<"yes" | "no" | null>(null);
   const [areas, setAreas] = useState<Record<string, Condition>>({});
   const [crowd, setCrowd] = useState<Crowd | null>(null);
@@ -117,23 +119,28 @@ export function ReportForm({ placeId }: { placeId: string }) {
     if (!open || hasLink(publicNote)) return;
     setSaving(true);
     setError(null);
-    const { error } = await db.rpc("post_report", {
+    const shared = {
       p_place_id: place.id,
       p_place_open: open === "yes",
       p_areas: open === "yes" ? areas : {},
       p_crowd: open === "yes" ? crowd : null,
-      p_note: note,
-      p_changed_decision: changed,
       p_public_note: publicNote,
       p_id: reportId,
-    });
+    };
+    // Signed in: the report and its private log entry. Guest: the report only,
+    // marked as a guest report (limits are per device; see the migration).
+    const { error } = guest
+      ? await db.rpc("post_guest_report", shared)
+      : await db.rpc("post_report", { ...shared, p_note: note, p_changed_decision: changed });
     setSaving(false);
     if (error) {
       // RR429: the database's rate limit (one report per place every 10 minutes).
       setError(
         error.code === "RR429"
           ? "You posted here in the last few minutes, so this one wasn't added. You can post again about 10 minutes after your last report."
-          : "Your report didn't save. Check your connection and try again. Nothing you entered was lost.",
+          : error.code === "RR430"
+            ? "There have been a lot of guest reports here in the last hour, so guest posting is paused for a bit. Sign in to post now."
+            : "Your report didn't save. Check your connection and try again. Nothing you entered was lost.",
       );
       return;
     }
@@ -149,14 +156,26 @@ export function ReportForm({ placeId }: { placeId: string }) {
         <p className="text-body text-muted">Only the first question is needed. Your report is shared without your name.</p>
       </div>
 
-      <Show when="signed-out">
-        <Card tone="cream" className="flex flex-col gap-3">
-          <p className="text-body">Sign in to post a report, so every report has a real golfer behind it.</p>
-          <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`} className="w-fit">Sign in</ButtonLink>
+      {/* Signed out: a choice first. Signing in is offered, never required. */}
+      {isLoaded && guest && !asGuest && (
+        <Card tone="cream" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-heading">Sign in to keep this in your log</h2>
+            <p className="text-body text-muted">
+              With an account, every report you post goes into your own private practice log (what you worked on, and whether a report changed your plans), and you
+              can follow your places. Your report is shared without your name either way.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <ButtonLink href={`/sign-up?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`}>Sign up</ButtonLink>
+            <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`} variant="secondary">Sign in</ButtonLink>
+            <span className="text-body text-muted">or</span>
+            <Button variant="ghost" onClick={() => setAsGuest(true)}>Post as a guest</Button>
+          </div>
         </Card>
-      </Show>
+      )}
 
-      <Show when="signed-in">
+      {isLoaded && (!guest || asGuest) && (
         <form onSubmit={submit} className="flex flex-col gap-8" noValidate>
           <Card as="section" className="flex flex-col gap-6" labelledBy="shared">
             <h2 id="shared" className="text-heading">Shared with everyone</h2>
@@ -229,6 +248,15 @@ export function ReportForm({ placeId }: { placeId: string }) {
             )}
           </Card>
 
+          {guest ? (
+            <Card as="section" tone="cream" className="flex flex-col gap-2" labelledBy="private">
+              <h2 id="private" className="text-heading">Posting as a guest</h2>
+              <p className="text-body text-muted">
+                Your report shows as a guest report. To keep a private log of your sessions,{" "}
+                <TextLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`}>sign in</TextLink> first.
+              </p>
+            </Card>
+          ) : (
           <Card as="section" tone="cream" className="flex flex-col gap-6" labelledBy="private">
             <div className="flex flex-col gap-1">
               <h2 id="private" className="text-heading">Just for you</h2>
@@ -248,6 +276,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
             </label>
             <Choice legend="Did Range Report change anything about this trip?" hint="Optional" options={changes} value={changed} onChange={setChanged} />
           </Card>
+          )}
 
           {error && <Alert tone="error" title={error} />}
 
@@ -256,7 +285,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
             {saving ? "Posting…" : "Post report"}
           </Button>
         </form>
-      </Show>
+      )}
     </div>
   );
 }

@@ -39,7 +39,8 @@ Ratings that disagree within 3 hours are flagged "reports differ". Times are Ame
 
 - **Reports are public and carry no user id at all.** The only link from a report to a person is that person's private practice log.
 - **Practice logs and follows are private:** row-level security returns only your own rows.
-- **Posting has one way in:** `post_report()`, which writes the report and its log together. It checks that you're signed in, that the areas belong to the place, at most one report per place every 10 minutes and 20 a day, and it makes retries safe (the form sends its own id). Direct inserts are revoked.
+- **Posting has two doors, and no others:** `post_report()` for signed-in golfers (writes the report and its private log together; at most one report per place every 10 minutes and 20 a day per person) and `post_guest_report()` for guests (the report only, marked `source = 'guest'`). Both check that the areas belong to the place and make retries safe (the form sends its own id). Direct inserts are revoked.
+- **Guest limits without tracking people:** a guest's device is a salted SHA-256 hash of its IP (from Cloudflare's `cf-connecting-ip`), kept in a private schema the API can't reach and deleted after a day. One guest report per place every 10 minutes and 10 a day per device, and at most 6 guest reports per place per hour overall. Guest reports are tagged in the app so they can be filtered out.
 - Column-level grants mean nobody can backdate a report or file one under someone else.
 - These rules were tested on the live database by impersonating two golfers and a guest inside a transaction that rolls back.
 

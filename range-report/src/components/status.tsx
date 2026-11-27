@@ -348,3 +348,12 @@ export function ReportChips({ place, report, mine }: { place: Place; report: Rep
     </ul>
   );
 }
+
+// Marks a report posted without an account.
+export function GuestTag() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-dashed border-edge/50 px-2 py-0.5 text-[0.75rem] font-semibold text-muted" title="Posted without an account">
+      Guest
+    </span>
+  );
+}

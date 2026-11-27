@@ -81,8 +81,9 @@ export default function Page() {
       <Card as="section" tone="cream" labelledBy="account" className="flex flex-col gap-3">
         <h2 id="account" className="text-heading">Do I need an account?</h2>
         <p className="text-body">
-          No. Looking around is free and needs nothing. With an account you can follow the places you practice, so they stay at the top, and every report you post goes into
-          your own private practice log: what you worked on and whether a report changed your plans. Only you can see it.
+          No. Looking around is free, and you can post a report as a guest (it shows as a guest report). With an account you can follow the places you practice, so they
+          stay at the top, and every report you post goes into your own private practice log: what you worked on and whether a report changed your plans. Only you can see
+          it.
         </p>
         <div className="flex flex-wrap gap-3">
           <ButtonLink href="/#places">Find a place</ButtonLink>
