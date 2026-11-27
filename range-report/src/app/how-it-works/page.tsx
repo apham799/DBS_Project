@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { StateIcon } from "@/components/status";
-import { ButtonLink, Card, cx } from "@/components/ui";
+import { ButtonLink, Card, cx, TextLink } from "@/components/ui";
 
 export const metadata: Metadata = { title: "How it works" };
 
@@ -13,7 +13,7 @@ const swatch = "inline-block h-4 w-7 shrink-0 rounded-sm border-2";
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
     <li className="flex gap-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-green font-display text-lg font-semibold text-on-green" aria-hidden>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-green font-display text-lg font-semibold text-on-green [font-variant-numeric:lining-nums]" aria-hidden>
         {n}
       </span>
       <div className="flex flex-col gap-1">
@@ -28,6 +28,7 @@ export default function Page() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
       <section className="flex flex-col gap-3">
+        <TextLink href="/" className="w-fit">← All places</TextLink>
         <h1 className="text-display">How Range Report works</h1>
         <p className="max-w-2xl text-lg leading-relaxed text-muted">
           Published hours say a Chicago practice spot is open. They don&apos;t say whether the part you need is: if the short game area is roped off, the range is mats
