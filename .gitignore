@@ -1,2 +1,5 @@
 # Feedback recordings stay local
 *.mp4
+# (already covered by *.mp4; listed by name so it is obvious)
+ProposalFeedback(Ariel).mp4
+V1Feedback(Lauren).mp4
