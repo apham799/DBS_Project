@@ -263,17 +263,18 @@ export function PlaceView({ placeId }: { placeId: string }) {
       {follows.error && <Alert tone="error" title={follows.error} onDismiss={follows.clearError} />}
 
       <section className="flex flex-col gap-4" aria-labelledby="areas">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 id="areas" className="text-heading">Right now</h2>
-            <LiveDot live={live} compact />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 id="areas" className="text-heading">Right now</h2>
+          <LiveDot live={live} compact />
+        </div>
+        {/* Directly above the map, in the eye-line of the colors it changes. */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-label font-semibold text-muted">Reports from</span>
             <ReportSourcePicker />
           </div>
+          {sourceNote[source] && <p className="text-label font-semibold text-limited">{sourceNote[source]}</p>}
         </div>
-        {sourceNote[source] && <p className="text-label font-semibold text-limited">{sourceNote[source]}</p>}
         {ready ? (
           // The heat map is the whole section: its key beside it on wide
           // screens, below it on phones. Tapping an area opens its details.
