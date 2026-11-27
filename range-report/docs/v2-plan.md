@@ -2,6 +2,93 @@
 
 Written Nov 17, 2026, the day v1 shipped. Based on the project proposal's roadmap, the TA's feedback ("less, done well"; check in with users at checkpoints) and a heat map of each facility.
 
+## Update Nov 27: plan after the v1 feedback (4 days to the fair)
+
+**Where it stands:** 5 real reports from 3 people, 1 changed decision, 5 follows, and no new reports since Nov 17. Another 3 reports came from the test golfers and are showing on the live site: delete them before the checkpoint (`docs/testing.md` on the `testing` branch).
+
+**Lauren's v1 feedback** (video, kept local, not in the repo):
+
+- She liked the colors, the readable font and the concept.
+- The welcome pop-up is a wall of text on top of a busy page. Drop it for a simpler landing section (tagline, a golf visual), then scroll to the places.
+- Only ask people to sign in when they do something that needs it, and add real navigation (a menu).
+- Cards are hard to scan: "Range" shows on some and not others, and she wasn't sure it meant a driving range. She suggests filters ("I want a driving range / I don't care").
+- "Last report 5 days ago" sits next to the weather and reads like a weather report.
+- After signing in, it isn't clear what you gain.
+- "Why do I have to sign in to post? Couldn't someone just spam-create an account?"
+
+**Decided (Nov 27):**
+
+- Guests can post. Tapping Post offers sign-in or sign-up with what you gain (a private log, follows), but you can skip it.
+- Guest reports are marked as guest reports.
+- One filter, **Reports from: Everyone / Golfers with accounts / Guests**, applies to everything computed from reports.
+- Scope: Lauren's fixes, plus the patterns job, plus the city map.
+
+### The plan, in order (each step ships on its own)
+
+**Nov 27: the front door**
+
+1. **Landing section instead of the pop-up.**
+   - A tall, calm top section with the tagline ("Know what's open before you drive"), one sentence and a golf illustration (drawn in SVG, so there's no photo licensing).
+   - "Find a place" scrolls to the list.
+   - The welcome pop-up is removed. Its content becomes a **How it works** page.
+2. **Navigation.**
+   - The header gets a menu: Places, Map, How it works, My log (signed in), and Sign in / Sign up.
+   - It collapses to a menu button on phones.
+3. **Sign in only when it's needed.**
+   - Guests now see the Follow button; tapping it opens a Clerk sign-in pop-up that says why ("Follow places to keep them at the top").
+   - Tapping Post opens the form with a choice at the top: "Sign in to keep this in your private log" or "Post as a guest".
+
+**Nov 28: guest reports and clearer cards**
+
+4. **Guest posting (systems).**
+   - A `source` column on reports (`account` / `guest`).
+   - A `post_guest_report()` RPC that guests can call. It's rate limited by a salted hash of the IP address, read from the request headers in the database, kept 24 hours, and never linked to the report.
+   - Limits: one guest report per place every 10 minutes per address, 10 a day, and at most 6 guest reports per place per hour overall.
+   - Guests get no practice log or "changed decision" question.
+   - The idempotent report id works the same way.
+   - Tests: the same live impersonation checks as before, as a guest.
+5. **"Reports from" filter.**
+   - Everyone / Golfers with accounts / Guests, remembered in the browser.
+   - It applies to status, the heat map, the cards, the summary and recent reports. One filtered report list feeds `placeStatus()`, so they can't disagree.
+   - Guest reports get a small "Guest" tag in the lists.
+   - Tests: status with the filter.
+6. **Clearer cards.**
+   - Plain names: "Driving range" instead of "Range", "Short game area", "Putting green", "Simulator bays".
+   - Each card is grouped into three lines: the hours badge, then what's usable ("Driving range limited · Putting green good"), then a footer that separates **"Golfer report: 5 days ago"** from **"Weather now: 50°F, drizzle"**, each with its own label.
+7. **Practice filters on Home.**
+   - What do you want to practice: Driving range, Short game, Putting, Simulator. Plus "Open now".
+   - A pure function with tests: a place matches if it has that kind of area and it isn't closed.
+
+**Nov 29: patterns job (the systems centerpiece)**
+
+8. **Nightly patterns.**
+   - A `pg_cron` job in Supabase rebuilds a `place_patterns` table from all report history: per place, when it tends to be packed or quiet (weekday × part of day), and how each area is usually rated by month.
+   - Place pages show "Usually" lines from it, e.g. "Usually packed Sat mornings", "Short game usually limited in November", with how many reports each is based on.
+   - The same table stores the AI summary, so every server instance shares one.
+   - Tests: run the job's SQL against fixture rows in a rolled-back transaction, like the RLS checks.
+
+**Nov 30: city map, checkpoint, fair prep**
+
+9. **City map** (`/map`).
+   - Leaflet + OpenStreetMap. The seven places as pins colored by their hours badge, with what's usable in the popup and a link to the place.
+   - Uses the same filters as Home.
+10. **Checkpoint #2** with the three golfers, plus the success numbers.
+11. **Fair prep:** a two-minute demo path, the test reports deleted, and the README updated.
+
+**If it runs late, cut in this order:**
+
+1. The map's filters (keep plain pins).
+2. Practice filters (keep the "Reports from" filter).
+3. The AI summary moving into the patterns table.
+
+Guest posting, the clearer cards and the patterns job stay.
+
+**Moved after the fair:** edit/update past reports (design below), the practice plan, the simulator form, the Playwright two-user test, the weather worker, real facility layouts.
+
+---
+
+# Original plan (Nov 17), kept for reference
+
 ## Where v1 stands
 
 **Goals by Dec 1** (from the proposal): 10–12 reports from 3 people, at least 6 not mine, and 3 times someone changed a decision because of a report.
