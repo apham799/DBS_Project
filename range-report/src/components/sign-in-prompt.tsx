@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ButtonLink } from "@/components/ui";
@@ -14,7 +15,8 @@ import { ButtonLink } from "@/components/ui";
 const EVENT = "range-report:ask-sign-in";
 
 // next: where to land after signing in (default: the page you were on).
-export type SignInAsk = { title: string; reason: string; next?: string };
+// guest: an option to carry on without an account (e.g. post as a guest).
+export type SignInAsk = { title: string; reason: string; next?: string; guest?: { label: string; href: string } };
 
 export const askToSignIn = (ask: SignInAsk) => window.dispatchEvent(new CustomEvent<SignInAsk>(EVENT, { detail: ask }));
 
@@ -63,6 +65,15 @@ export function SignInPrompt() {
               Not now
             </button>
           </div>
+          {ask.guest && (
+            <p className="border-t border-rule pt-3 text-body text-muted">
+              Or{" "}
+              <Link href={ask.guest.href} onClick={close} className="rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
+                {ask.guest.label}
+              </Link>
+              , without an account. It shows as a guest report.
+            </p>
+          )}
         </div>
       )}
     </dialog>

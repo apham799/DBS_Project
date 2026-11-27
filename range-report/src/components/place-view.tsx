@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
+import { askToSignIn } from "@/components/sign-in-prompt";
 import { AreaDetails, crowdWord, GuestTag, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
@@ -74,8 +75,8 @@ function AreaDialog({
   );
 }
 
-// Where to post from this page: the report form, for everyone (signed-out
-// golfers choose there between signing in and posting as a guest).
+// Where to post from this page: the report form if signed in; signed out, the
+// sign-in pop-up first, which also offers posting as a guest.
 // There's exactly one on the page, in the summary card (both versions of it).
 function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId: string; size?: "sm" | "lg"; label?: string }) {
   return (
@@ -84,8 +85,20 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
         <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
       </Show>
       <Show when="signed-out">
-        {/* The form itself offers signing in or posting as a guest. */}
-        <ButtonLink href={`/places/${placeId}/report`} size={size}>{label}</ButtonLink>
+        {/* The sign-in pop-up, with "post as a guest" as the way to carry on without an account. */}
+        <Button
+          size={size}
+          onClick={() =>
+            askToSignIn({
+              title: "Post a report",
+              reason: "Sign in to keep this report in your own practice log, too.",
+              next: `/places/${placeId}/report`,
+              guest: { label: "post as a guest", href: `/places/${placeId}/report` },
+            })
+          }
+        >
+          {label}
+        </Button>
       </Show>
     </>
   );

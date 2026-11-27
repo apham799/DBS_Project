@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { POSTED_KEY } from "@/components/place-view";
 import { StateIcon } from "@/components/status";
-import { Alert, Button, ButtonLink, Card, cx, Spinner, TextLink } from "@/components/ui";
+import { Alert, Button, Card, cx, Spinner, TextLink } from "@/components/ui";
 import { placeById } from "@/data/places";
 import { useDb } from "@/lib/db";
 import type { Condition, Crowd } from "@/lib/types";
@@ -97,8 +97,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
   const router = useRouter();
   const { db, isLoaded, userId } = useDb();
-  // Signed out, they choose: sign in (and keep a private log) or post as a guest.
-  const [asGuest, setAsGuest] = useState(false);
+  // Signed out, the form posts as a guest (the sign-in pop-up offered an account first).
   const guest = !userId;
   const [open, setOpen] = useState<"yes" | "no" | null>(null);
   const [areas, setAreas] = useState<Record<string, Condition>>({});
@@ -156,26 +155,7 @@ export function ReportForm({ placeId }: { placeId: string }) {
         <p className="text-body text-muted">Only the first question is needed. Your report is shared without your name.</p>
       </div>
 
-      {/* Signed out: a choice first. Signing in is offered, never required. */}
-      {isLoaded && guest && !asGuest && (
-        <Card tone="cream" className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-heading">Sign in to keep this in your log</h2>
-            <p className="text-body text-muted">
-              With an account, every report you post goes into your own private practice log (what you worked on, and whether a report changed your plans), and you
-              can follow your places. Your report is shared without your name either way.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ButtonLink href={`/sign-up?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`}>Sign up</ButtonLink>
-            <ButtonLink href={`/sign-in?redirect_url=${encodeURIComponent(`/places/${place.id}/report`)}`} variant="secondary">Sign in</ButtonLink>
-            <span className="text-body text-muted">or</span>
-            <Button variant="ghost" onClick={() => setAsGuest(true)}>Post as a guest</Button>
-          </div>
-        </Card>
-      )}
-
-      {isLoaded && (!guest || asGuest) && (
+      {isLoaded && (
         <form onSubmit={submit} className="flex flex-col gap-8" noValidate>
           <Card as="section" className="flex flex-col gap-6" labelledBy="shared">
             <h2 id="shared" className="text-heading">Shared with everyone</h2>
