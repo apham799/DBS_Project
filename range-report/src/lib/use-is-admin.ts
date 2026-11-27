@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useDb } from "./db";
 
+export type AdminCheck = "loading" | "signed-out" | "admin" | "not-admin";
+
 // Whether the person signed in is a Range Report admin (the database's admin
 // list, via is_admin()). Only decides what to show: every admin action checks
 // again in the database.
-export function useIsAdmin(): boolean {
+export function useAdminCheck(): AdminCheck {
   const { db, isLoaded, userId } = useDb();
   const [result, setResult] = useState<{ userId: string; admin: boolean } | null>(null);
 
@@ -19,5 +21,12 @@ export function useIsAdmin(): boolean {
     };
   }, [db, isLoaded, userId]);
 
-  return !!userId && result?.userId === userId && result.admin;
+  if (!isLoaded) return "loading";
+  if (!userId) return "signed-out";
+  if (result?.userId !== userId) return "loading";
+  return result.admin ? "admin" : "not-admin";
+}
+
+export function useIsAdmin(): boolean {
+  return useAdminCheck() === "admin";
 }

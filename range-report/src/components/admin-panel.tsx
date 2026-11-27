@@ -1,24 +1,17 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, cx } from "@/components/ui";
 import { chicagoParts, weekdayLabel } from "@/lib/chicago-time";
+import { SuggestionCard } from "@/components/suggestion-card";
 import { useDb } from "@/lib/db";
+import { useDismissed } from "@/lib/use-dismissed";
 import { suggestionsFor, type SuggestedRule, type Suggestion } from "@/lib/suggestions";
 import type { HoursRule, Place, Report } from "@/lib/types";
 
 // The admin panel on a place page (admins only; every action is checked again
 // in the database). Suggestions from golfers' reports come first, then what's
 // confirmed now, then forms to confirm a status or change the hours.
-
-const DISMISSED_KEY = "range-report:dismissed-suggestions";
-const readDismissed = (): string[] => {
-  try {
-    return JSON.parse(sessionStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
-  } catch {
-    return [];
-  }
-};
 
 const input = "h-10 rounded-md border-2 border-edge bg-surface px-3 text-body";
 const label = "flex flex-col gap-1 text-label font-semibold text-muted";
@@ -58,12 +51,12 @@ export function AdminPanel({
 }) {
   const { db } = useDb();
   const today = chicagoParts(now).dateKey;
-  const [dismissed, setDismissed] = useState<string[]>(() => (typeof window === "undefined" ? [] : readDismissed()));
+  const { isDismissed, dismiss } = useDismissed();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const suggestions = useMemo(() => suggestionsFor(place, reports, now).filter((s) => !dismissed.includes(s.key)), [place, reports, now, dismissed]);
+  const suggestions = useMemo(() => suggestionsFor(place, reports, now).filter((s) => !isDismissed(place.id, s.key)), [place, reports, now, isDismissed]);
   const confirmed = (place.confirmed ?? []).filter((c) => !c.endsOn || c.endsOn >= today);
   const areaLabel = (id: string | null) => (id === null ? "Whole place" : (place.areas.find((a) => a.id === id)?.label ?? id));
 
@@ -96,14 +89,16 @@ export function AdminPanel({
       db.rpc("admin_set_rule", { p_place_id: place.id, p_area_id: r.areaId ?? "", p_condition: r.condition, p_note: r.note, p_starts_on: from, p_ends_on: to }),
     );
   const endRule = (id: string) => run("end the confirmed status", () => db.rpc("admin_end_rule", { p_rule_id: id }));
-  const dismiss = (key: string) => {
-    const next = [...dismissed, key];
-    setDismissed(next);
-    sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
-  };
-
   // "Edit first" / "Fill in the hours" open the update box and go to its form.
   const updateBox = useRef<HTMLDetailsElement>(null);
+  const suggestionsBox = useRef<HTMLDetailsElement>(null);
+
+  // Arriving from the Admin page (/places/x#admin): open the suggestions.
+  useEffect(() => {
+    if (window.location.hash !== "#admin" || !suggestionsBox.current) return;
+    suggestionsBox.current.open = true;
+    requestAnimationFrame(() => suggestionsBox.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, []);
   const goTo = (id: string) => {
     if (updateBox.current) updateBox.current.open = true;
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" }));
@@ -128,12 +123,12 @@ export function AdminPanel({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div id="admin" className="flex scroll-mt-24 flex-col gap-3">
       {error && <Alert tone="error" title={error} onDismiss={() => setError(null)} />}
       {done && <p className="text-label font-semibold text-open" role="status">{done}</p>}
 
       {/* Box 1: what golfers' reports suggest changing. */}
-      <details className="group rounded-xl border-2 border-dashed border-brass bg-cream/50">
+      <details ref={suggestionsBox} className="group scroll-mt-24 rounded-xl border-2 border-dashed border-brass bg-cream/50">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <span className="rounded-full bg-brass px-2.5 py-0.5 text-label font-semibold text-on-green">Admin</span>
         <span className="text-heading">Suggestions</span>
@@ -156,22 +151,19 @@ export function AdminPanel({
           ) : (
             <ul className="flex flex-col gap-3">
               {suggestions.map((s) => (
-                <li key={s.key} className="flex flex-col gap-2 rounded-lg border border-rule bg-surface p-4">
-                  <p className="font-semibold text-ink">{s.title}</p>
-                  <p className="text-label font-normal text-muted">{s.detail}</p>
-                  {(s.kind === "agree" || s.kind === "season") && (
-                    <p className="text-label text-ink">Would confirm: {areaLabel(s.rule.areaId)}, {s.rule.condition}, &ldquo;{s.rule.note}&rdquo;</p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" disabled={busy} onClick={() => apply(s)}>
-                      {s.kind === "review" ? "End it" : s.kind === "hours" ? "Fill in the hours" : "Confirm"}
-                    </Button>
-                    {(s.kind === "agree" || s.kind === "season") && (
+                <SuggestionCard
+                  key={s.key}
+                  suggestion={s}
+                  areaLabel={areaLabel}
+                  busy={busy}
+                  onApply={() => apply(s)}
+                  editFirst={
+                    (s.kind === "agree" || s.kind === "season") && (
                       <Button size="sm" variant="secondary" disabled={busy} onClick={() => editFirst(s)}>Edit first</Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => dismiss(s.key)}>Dismiss</Button>
-                  </div>
-                </li>
+                    )
+                  }
+                  onDismiss={() => dismiss(place.id, s.key)}
+                />
               ))}
             </ul>
           )}

@@ -5,14 +5,16 @@
 //
 // Navigation (from v1 feedback: "some kind of menu or navigation that lets the
 // user click around"): Places, How it works and, signed in, My Log. On wide
-// screens they sit in the bar; on phones they fold into a Menu button, which
+// screens they sit in the bar (plus Admin, for admins); on phones they fold into a Menu button, which
 // also stops "Sign up" running off the screen. The current page is marked
 // (aria-current) and underlined.
 import { Show, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { ButtonLink, cx } from "@/components/ui";
+import { useAllSuggestions } from "@/lib/use-all-suggestions";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 // Home listens for this to open its (possibly hidden) place list and scroll to it.
 export const SHOW_PLACES_EVENT = "range-report:show-places";
@@ -23,8 +25,9 @@ const NAV: NavItem[] = [
   { href: "/how-it-works", label: "How it works", current: (p) => p === "/how-it-works" },
   { href: "/log", label: "My Log", current: (p) => p === "/log", signedIn: true },
 ];
+const ADMIN: NavItem = { href: "/admin", label: "Admin", current: (p) => p === "/admin", signedIn: true };
 
-function NavLink({ item, path, onNavigate, block }: { item: NavItem; path: string; onNavigate: () => void; block?: boolean }) {
+function NavLink({ item, path, onNavigate, block, badge }: { item: NavItem; path: string; onNavigate: () => void; block?: boolean; badge?: ReactNode }) {
   const current = item.current(path);
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     // Already on Home: open the list and scroll there, instead of a navigation
@@ -47,6 +50,7 @@ function NavLink({ item, path, onNavigate, block }: { item: NavItem; path: strin
       )}
     >
       {item.label}
+      {badge}
     </Link>
   );
 }
@@ -61,8 +65,26 @@ function Links({ path, onNavigate, block }: { path: string; onNavigate: () => vo
         {NAV.filter((i) => i.signedIn).map((i) => (
           <NavLink key={i.href} item={i} path={path} onNavigate={onNavigate} block={block} />
         ))}
+        <AdminLink path={path} onNavigate={onNavigate} block={block} />
       </Show>
     </>
+  );
+}
+
+// Admins only (the database's admin list). The count is loaded only for them.
+function AdminLink(props: { path: string; onNavigate: () => void; block?: boolean }) {
+  if (!useIsAdmin()) return null;
+  return <NavLink item={ADMIN} {...props} badge={<AdminCount />} />;
+}
+
+function AdminCount() {
+  const { total, loaded } = useAllSuggestions();
+  if (!loaded || total === 0) return null;
+  return (
+    <span className="ml-1.5 inline-block rounded-full border border-limited bg-limited-tint px-2 py-px align-middle text-label font-semibold text-limited">
+      {total}
+      <span className="sr-only"> suggestion{total === 1 ? "" : "s"}</span>
+    </span>
   );
 }
 

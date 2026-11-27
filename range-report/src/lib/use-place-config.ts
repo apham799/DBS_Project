@@ -33,6 +33,7 @@ export function merge(place: Place, config: PlaceConfig): Place {
 export function usePlaceConfig() {
   const { db } = useDb();
   const [config, setConfig] = useState<PlaceConfig>(EMPTY);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const [r, h] = await Promise.all([
@@ -44,6 +45,7 @@ export function usePlaceConfig() {
       rules: (r.data as RuleRow[]).map((x) => ({ id: x.id, placeId: x.place_id, areaId: x.area_id, condition: x.condition, note: x.note, startsOn: x.starts_on, endsOn: x.ends_on })),
       hours: Object.fromEntries((h.data as HoursRow[]).map((x) => [x.place_id, { hours: x.hours, note: x.note, updatedAt: x.updated_at }])),
     });
+    setLoaded(true);
   }, [db]);
 
   useEffect(() => {
@@ -63,5 +65,5 @@ export function usePlaceConfig() {
   }, [db, load]);
 
   const withConfig = useCallback((p: Place) => merge(p, config), [config]);
-  return useMemo(() => ({ config, withConfig, reload: load }), [config, withConfig, load]);
+  return useMemo(() => ({ config, loaded, withConfig, reload: load }), [config, loaded, withConfig, load]);
 }
