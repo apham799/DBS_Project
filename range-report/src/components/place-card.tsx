@@ -51,6 +51,10 @@ export function PlaceCard({
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const edge = highlight ? "border-green" : "border-rule";
+  // Opening and closing ease over the same 300 ms: the details slide down and
+  // fade in, the name grows to its full height, and the card's bottom corners
+  // round off into the details. Reduced motion: no animation.
+  const ease = "duration-300 ease-out motion-reduce:transition-none";
   // Cards in a row line up: each one is a subgrid over the list's rows (name,
   // hours badge, Details, opened details), so a name that wraps onto two lines
   // moves the badge and Details down in every card of its row, and all the
@@ -60,9 +64,11 @@ export function PlaceCard({
     <li className="rr-reveal row-span-4 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0">
       <div
         className={cx(
-          "relative row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-3 border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
-          open ? "rounded-t-lg border-b-0 pb-3" : "rounded-lg",
+          "relative row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-3 border bg-surface p-5 shadow-card transition-[box-shadow,border-radius,border-color,padding] hover:shadow-lift",
+          ease,
+          open ? "rounded-t-lg rounded-b-none pb-3" : "rounded-lg",
           edge,
+          open && "border-b-transparent",
         )}
       >
       <div className="flex items-start justify-between gap-3">
@@ -70,8 +76,18 @@ export function PlaceCard({
           {/* One line, with "…" if it's too long ("PGA TOUR Superstore Lincoln
               Park"), so every card's top is the same height; opened, the full
               name wraps. Clipped (not hidden) with a margin, so the focus ring
-              still shows; screen readers always get the whole name. */}
-          <h3 className={cx("text-heading", !open && "overflow-clip text-ellipsis whitespace-nowrap [overflow-clip-margin:4px]")} title={open ? undefined : place.name}>
+              still shows; screen readers always get the whole name. The height
+              animates between one line and (up to) three; closing, it stays
+              wrapped until it has shrunk, then goes back to "…". */}
+          <h3
+            className={cx(
+              "overflow-clip text-ellipsis text-heading [overflow-clip-margin:4px] motion-reduce:[transition:none]",
+              open
+                ? "max-h-[3lh] [transition:max-height_300ms_ease-out]"
+                : "max-h-[1lh] whitespace-nowrap [transition:max-height_300ms_ease-out,white-space_0s_300ms_allow-discrete]",
+            )}
+            title={open ? undefined : place.name}
+          >
             {/* The whole card is clickable through this link's ::after; the follow button sits above it. */}
             <Link href={`/places/${place.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-lg hover:underline">
               {place.name}
@@ -115,7 +131,11 @@ export function PlaceCard({
       {/* The fourth row: the opened details (joined to the card above), and
           the space before the next row of cards either way. */}
       <div className="pb-4">
-      <div id={detailsId} hidden={!open} className={cx("relative flex flex-col gap-3 rounded-b-lg border border-t-0 bg-surface px-5 pb-5 shadow-card", edge)}>
+      {/* Slides open: the grid row animates from 0 to its full height. Closed,
+          it's inert (not focusable, not read out). */}
+      <div className={cx("grid transition-[grid-template-rows,opacity]", ease, open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className="min-h-0 overflow-clip [overflow-clip-margin:16px]" inert={!open}>
+      <div id={detailsId} className={cx("relative flex flex-col gap-3 rounded-b-lg border border-t-0 bg-surface px-5 pb-5 shadow-card", edge)}>
         <div className="flex flex-col gap-3 border-t border-rule pt-3">
         {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
         <AreaDots status={status} />
@@ -143,6 +163,8 @@ export function PlaceCard({
           )}
         </dl>
         </div>
+      </div>
+      </div>
       </div>
       </div>
     </li>
