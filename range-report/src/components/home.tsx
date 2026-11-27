@@ -95,6 +95,29 @@ function usePlacesOpen(): [boolean, (open: boolean) => void] {
   return [open, set];
 }
 
+// Whether "Other places" is open, for someone with saved places (it folds
+// away so their own come first). Open unless they closed it (localStorage).
+const OTHERS_OPEN_KEY = "range-report:other-places-open";
+
+function useOthersOpen(): [boolean, (open: boolean) => void] {
+  const [open, setState] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (localStorage.getItem(OTHERS_OPEN_KEY) === "0") setState(false);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const set = useCallback((next: boolean) => {
+    setState(next);
+    localStorage.setItem(OTHERS_OPEN_KEY, next ? "1" : "0");
+  }, []);
+  return [open, set];
+}
+
+// The list grid. No row gap: each card leaves its own space below it, so the
+// cards can share rows (see PlaceCard).
+const GRID = "grid gap-x-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+
 export function Home() {
   const { reports: allReports, loaded, error, live, justAdded, retry } = useReports();
   // "Reports from": applied once, here, so every status below agrees with it.
@@ -120,6 +143,7 @@ export function Home() {
 
   const [filters, setFilters] = useFilters();
   const [placesOpen, setPlacesOpen] = usePlacesOpen();
+  const [othersOpen, setOthersOpen] = useOthersOpen();
   const [instant, setInstant] = useState(false);
 
   // "Places" in the header (or arriving at /#places): open the list instantly
@@ -145,6 +169,10 @@ export function Home() {
   const visible = places.filter((p) => matches(p, statuses?.[p.id], filters));
   const mine = visible.filter((p) => follows.following.has(p.id));
   const others = visible.filter((p) => !follows.following.has(p.id));
+  const hasSaved = follows.following.size > 0;
+  // Signed in with saved places: "Other places" can fold away.
+  const foldable = follows.signedIn && hasSaved;
+  const othersShown = !foldable || othersOpen;
 
   const card = (p: (typeof places)[number]) => statuses && now && (
     <PlaceCard
@@ -211,41 +239,70 @@ export function Home() {
         </ul>
       ) : (
         <>
-          {mine.length > 0 && (
+          {/* Signed in: your saved places first, or a note that there are none yet. */}
+          {follows.signedIn && follows.loaded && (
             <section className="flex flex-col gap-4" aria-labelledby="mine">
               <h2 id="mine" className="text-heading">Your places</h2>
-              <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{mine.map(card)}</ul>
+              {mine.length > 0 ? (
+                <ul className={GRID}>{mine.map(card)}</ul>
+              ) : hasSaved ? (
+                <p className="text-body text-muted">None of your saved places match these filters.</p>
+              ) : (
+                <div className="flex flex-col gap-1 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 p-5">
+                  <p className="text-body font-semibold">No saved places yet</p>
+                  <p className="text-body text-muted">Tap Follow on a place below and it&apos;ll stay up here, so you can check it first.</p>
+                </div>
+              )}
             </section>
           )}
           <section className="flex flex-col gap-4" aria-labelledby="all">
             <div className="flex flex-col gap-1">
-              <h2 id="all" className="text-heading">{mine.length ? "Other places" : "Places"}</h2>
-              <Show when="signed-in">
-                {mine.length === 0 && <p className="text-body text-muted">Follow the places you practice, and they&apos;ll stay at the top.</p>}
-              </Show>
+              {foldable ? (
+                <h2 id="all" className="text-heading">
+                  <button
+                    type="button"
+                    aria-expanded={othersOpen}
+                    aria-controls="other-places"
+                    onClick={() => setOthersOpen(!othersOpen)}
+                    className="inline-flex items-center gap-2 rounded-sm text-left hover:text-green"
+                  >
+                    Other places
+                    <span className="text-body font-normal text-muted">{others.length}</span>
+                    <svg viewBox="0 0 16 16" className={cx("size-5 text-muted transition-transform duration-200", othersOpen && "rotate-180")} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 6 L8 10 L12 6" />
+                    </svg>
+                  </button>
+                </h2>
+              ) : (
+                <h2 id="all" className="text-heading">{follows.signedIn ? "All places" : "Places"}</h2>
+              )}
               <Show when="signed-out">
                 <p className="text-body text-muted">
                   <TextLink href="/sign-up">Sign up</TextLink> to follow your places and post what you find.
                 </p>
               </Show>
             </div>
-            {visible.length === 0 ? (
-              <div className="flex flex-col items-start gap-2 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 p-5">
-                <p className="text-body">No places match all of those.</p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setFilters(NO_FILTERS);
-                    setReportSource("everyone");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              </div>
-            ) : (
-              <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
-            )}
+            <div id="other-places" hidden={!othersShown && visible.length > 0} className="flex flex-col gap-4">
+              {visible.length === 0 ? (
+                <div className="flex flex-col items-start gap-2 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 p-5">
+                  <p className="text-body">No places match all of those.</p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setFilters(NO_FILTERS);
+                      setReportSource("everyone");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              ) : others.length === 0 ? (
+                <p className="text-body text-muted">Every place that matches is one of yours.</p>
+              ) : (
+                <ul className={GRID}>{others.map(card)}</ul>
+              )}
+            </div>
           </section>
         </>
       )}

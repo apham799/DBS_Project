@@ -12,6 +12,8 @@ export function useFollows() {
   const { db, isLoaded, userId } = useDb();
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  // Whose follows have loaded, so "No saved places yet" never shows before they arrive.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoaded || !userId) return;
@@ -22,6 +24,7 @@ export function useFollows() {
         if (cancelled) return;
         if (error) {
           setError("Couldn't load the places you follow.");
+          setLoadedFor(userId);
           return;
         }
         const set = new Set((data as { place_id: string }[]).map((f) => f.place_id));
@@ -34,7 +37,9 @@ export function useFollows() {
             if (!e || e.code === "23505") set.add(pending);
           }
         }
-        if (!cancelled) setFollowing(set);
+        if (cancelled) return;
+        setFollowing(set);
+        setLoadedFor(userId);
       });
     return () => {
       cancelled = true;
@@ -79,5 +84,5 @@ export function useFollows() {
   );
 
   // Signed out, follow nothing (without a state reset that would re-render).
-  return { following: userId ? following : NONE, toggle, error, clearError: () => setError(null), signedIn: !!userId };
+  return { following: userId ? following : NONE, toggle, error, clearError: () => setError(null), signedIn: !!userId, loaded: !!userId && loadedFor === userId };
 }

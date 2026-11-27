@@ -50,13 +50,21 @@ export function PlaceCard({
 }) {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
+  const edge = highlight ? "border-green" : "border-rule";
+  // Cards in a row line up: each one is a subgrid over the list's rows (name,
+  // hours badge, Details, opened details), so a name that wraps onto two lines
+  // moves the badge and Details down in every card of its row, and all the
+  // cards end level. The opened details sit in the fourth row, outside the
+  // card's box, joined to it: only that card grows; its neighbors stay short.
   return (
-    <li
-      className={cx(
-        "rr-reveal relative flex flex-col gap-3 rounded-lg border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
-        highlight ? "border-green" : "border-rule",
-      )}
-    >
+    <li className="rr-reveal row-span-4 grid grid-rows-subgrid gap-y-0">
+      <div
+        className={cx(
+          "relative row-span-3 grid grid-rows-subgrid gap-y-3 border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
+          open ? "rounded-t-lg border-b-0 pb-3" : "rounded-lg",
+          edge,
+        )}
+      >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="text-heading">
@@ -78,7 +86,9 @@ export function PlaceCard({
       </div>
 
       {/* Always shown: whether it's open. */}
-      <HoursBadge hours={status.hours} />
+      <div>
+        <HoursBadge hours={status.hours} />
+      </div>
 
       {/* Everything else opens on demand, so the list stays easy to scan.
           The button sits above the card's link (z-10), like Follow. It spans
@@ -89,15 +99,20 @@ export function PlaceCard({
         aria-expanded={open}
         aria-controls={detailsId}
         onClick={() => setOpen(!open)}
-        className="relative z-10 -mx-2 -my-1 flex w-[calc(100%+1rem)] items-center gap-1 rounded-md border border-transparent px-2 py-2 text-left text-label font-semibold text-green transition-colors hover:border-ink/15 hover:bg-cream/40"
+        className="relative z-10 -mx-2 -my-1 flex w-[calc(100%+1rem)] items-center self-end gap-1 rounded-md border border-transparent px-2 py-2 text-left text-label font-semibold text-green transition-colors hover:border-ink/15 hover:bg-cream/40"
       >
         {open ? "Hide details" : "Details"}
         <svg viewBox="0 0 16 16" className={cx("size-4 transition-transform duration-200", open && "rotate-180")} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 6 L8 10 L12 6" />
         </svg>
       </button>
+      </div>
 
-      <div id={detailsId} hidden={!open} className="flex flex-col gap-3 border-t border-rule pt-3">
+      {/* The fourth row: the opened details (joined to the card above), and
+          the space before the next row of cards either way. */}
+      <div className="pb-4">
+      <div id={detailsId} hidden={!open} className={cx("relative flex flex-col gap-3 rounded-b-lg border border-t-0 bg-surface px-5 pb-5 shadow-card", edge)}>
+        <div className="flex flex-col gap-3 border-t border-rule pt-3">
         {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
         <AreaDots status={status} />
         {status.crowd && <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>}
@@ -123,6 +138,8 @@ export function PlaceCard({
             </>
           )}
         </dl>
+        </div>
+      </div>
       </div>
     </li>
   );
