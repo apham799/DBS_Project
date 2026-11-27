@@ -80,13 +80,15 @@ export function PlaceCard({
       <HoursBadge hours={status.hours} />
 
       {/* Everything else opens on demand, so the list stays easy to scan.
-          The button sits above the card's link (z-10), like Follow. */}
+          The button sits above the card's link (z-10), like Follow. It spans
+          the whole row (a bigger target than the word), with no border until
+          hovered, when a faint outline shows how far it reaches. */}
       <button
         type="button"
         aria-expanded={open}
         aria-controls={detailsId}
         onClick={() => setOpen(!open)}
-        className="relative z-10 inline-flex w-fit items-center gap-1 rounded-sm text-label font-semibold text-green hover:underline"
+        className="relative z-10 -mx-2 -my-1 flex w-[calc(100%+1rem)] items-center gap-1 rounded-md border border-transparent px-2 py-2 text-left text-label font-semibold text-green transition-colors hover:border-ink/15 hover:bg-cream/40"
       >
         {open ? "Hide details" : "Details"}
         <svg viewBox="0 0 16 16" className={cx("size-4 transition-transform duration-200", open && "rotate-180")} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

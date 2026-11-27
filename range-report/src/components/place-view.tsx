@@ -8,7 +8,7 @@ import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { ReportSourcePicker } from "@/components/place-filters";
 import { askToSignIn } from "@/components/sign-in-prompt";
-import { AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
+import { AdminMark, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
@@ -21,7 +21,8 @@ import { counts, hiddenLabel, hiddenWhy } from "@/lib/report-visibility";
 import { useVotes } from "@/lib/use-votes";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, summarizeReports, summaryLines } from "@/lib/summary";
-import type { Place, Report } from "@/lib/types";
+import { chicagoParts } from "@/lib/chicago-time";
+import type { ConfirmedRule, Place, Report } from "@/lib/types";
 import { useAiSummary } from "@/lib/use-ai-summary";
 import { useFollows } from "@/lib/use-follows";
 import { useReports } from "@/lib/use-reports";
@@ -38,12 +39,18 @@ function AreaDialog({
   trend,
   now,
   placeId,
+  rule,
+  closedVisits,
+  sourceNote,
   onClose,
 }: {
   status: AreaStatus | null;
   trend?: AreaTrend;
   now: Date;
   placeId: string;
+  rule?: ConfirmedRule;
+  closedVisits: number;
+  sourceNote: string | null;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -73,7 +80,7 @@ function AreaDialog({
               </svg>
             </button>
           </div>
-          <AreaDetails status={status} trend={trend} now={now} />
+          <AreaDetails status={status} trend={trend} now={now} rule={rule} closedVisits={closedVisits} sourceNote={sourceNote} />
           <div className="flex flex-wrap items-center gap-3 border-t border-rule pt-4">
             <span className="text-body text-muted">Been here today?</span>
             <PostButton placeId={placeId} size="sm" />
@@ -251,10 +258,15 @@ export function PlaceView({ placeId }: { placeId: string }) {
   // The area whose details pop-up is open, if any.
   const [selected, setSelected] = useState<string | null>(null);
   // How each area has been rated in the last 30 days, for the details pop-up.
-  const trends = useMemo(
-    () => new Map(now ? areaTrends(place, recentReports(place, reports, now)).map((t) => [t.areaId, t]) : []),
-    [place, reports, now],
-  );
+  const recent30 = useMemo(() => (now ? recentReports(place, reports, now) : []), [place, reports, now]);
+  const trends = useMemo(() => new Map(areaTrends(place, recent30).map((t) => [t.areaId, t])), [place, recent30]);
+  const closedVisits = recent30.filter((r) => !r.placeOpen).length;
+  // What admins have set that's in effect today: shown in the area pop-up and
+  // under Published info, so the note they wrote is always somewhere to read.
+  const today = now ? chicagoParts(now).dateKey : null;
+  const activeRules = (place.confirmed ?? []).filter((c) => today && c.startsOn <= today && (!c.endsOn || today <= c.endsOn));
+  const ruleFor = (areaId: string) => activeRules.find((c) => c.areaId === areaId) ?? activeRules.find((c) => c.areaId === null);
+  const areaName = (id: string | null) => (id === null ? "Whole place" : (place.areas.find((a) => a.id === id)?.label ?? id));
   const placeReports = sourced.filter((r) => r.placeId === place.id).slice(0, 15);
   const recent = placeReports.filter(counts).slice(0, 10);
   const hiddenOnes = placeReports.filter((r) => !counts(r));
@@ -390,6 +402,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
           trend={selected ? trends.get(selected) : undefined}
           now={now}
           placeId={place.id}
+          rule={selected ? ruleFor(selected) : undefined}
+          closedVisits={closedVisits}
+          sourceNote={sourceNote[source]}
           onClose={() => setSelected(null)}
         />
       )}
@@ -402,6 +417,21 @@ export function PlaceView({ placeId }: { placeId: string }) {
 
         <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
           <h2 id="published" className="text-heading">Published info</h2>
+          {activeRules.length > 0 && (
+            <div className="flex flex-col gap-1 rounded-md border-l-4 border-brass bg-surface px-3 py-2">
+              <p className="flex items-center gap-1.5 text-label font-semibold text-ink">
+                <AdminMark />
+                Set by a Range Report admin
+              </p>
+              <ul className="flex flex-col gap-1 text-body">
+                {activeRules.map((c) => (
+                  <li key={c.id}>
+                    <span className="font-semibold">{areaName(c.areaId)}: {c.condition}.</span> {c.note}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {place.hoursUpdated && (
             <p className="text-body">
               <span className="font-semibold">Hours updated by Range Report</span> on {new Date(place.hoursUpdated.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" })}

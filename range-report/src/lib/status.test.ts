@@ -179,7 +179,7 @@ describe("confirmed statuses (set by an admin)", () => {
 
   it("rank above a published season", () => {
     const s = placeStatus(withRule(), [], tuesday);
-    expect(area(s, "range")).toMatchObject({ state: "limited", basis: "confirmed", reason: "Mats only · confirmed by Range Report" });
+    expect(area(s, "range")).toMatchObject({ state: "limited", basis: "confirmed", reason: "Mats only · set by a Range Report admin" });
     expect(area(s, "putting")).toMatchObject({ state: "closed", basis: "season" }); // only the area it names
   });
 

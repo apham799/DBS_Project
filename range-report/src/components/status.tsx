@@ -6,7 +6,7 @@ import type { HoursNow } from "@/lib/hours";
 import { ageLabel, type AreaState, type AreaStatus, type PlaceStatus } from "@/lib/status";
 import type { AreaTrend } from "@/lib/summary";
 import { crowdWord } from "@/lib/summary";
-import type { Condition, Place, Report } from "@/lib/types";
+import type { Condition, ConfirmedRule, Place, Report } from "@/lib/types";
 
 // How each area's status looks. Color, an icon and a word always go together.
 // The border says how sure we are:
@@ -69,16 +69,33 @@ export function areaStateLabel(s: AreaStatus): string | null {
   if (s.basis === "likely") return `Probably ${stateWord[s.state].toLowerCase()}`;
   if (s.basis === "season") return `${stateWord[s.state]}, by the published season`;
   if (s.basis === "weather") return `${stateWord[s.state]}, thunderstorm nearby`;
-  if (s.basis === "confirmed") return `${stateWord[s.state]}, confirmed by Range Report`;
+  if (s.basis === "confirmed") return `${stateWord[s.state]}, set by a Range Report admin`;
   return stateWord[s.state];
 }
 
-export function AreaDetails({ status, trend, now }: { status: AreaStatus; trend?: AreaTrend; now: Date }) {
+const shortDay = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+export function AreaDetails({
+  status,
+  trend,
+  now,
+  rule,
+  closedVisits = 0,
+  sourceNote,
+}: {
+  status: AreaStatus;
+  trend?: AreaTrend;
+  now: Date;
+  rule?: ConfirmedRule; // an admin's status for this area (or the whole place), if one is in effect
+  closedVisits?: number; // reports in the last 30 days that found the whole place closed
+  sourceNote?: string | null; // "Reports from" is narrowed
+}) {
   const { state, basis, reason, conflict } = status;
   const label = areaStateLabel(status);
   // With ratings to show, "Reported limited 2 h ago" would only repeat them;
   // the season or weather note, or the reason when nobody rated it, still helps.
-  const note = !trend || basis === "season" || basis === "weather" ? reason : "";
+  // An admin's note has its own box below.
+  const note = basis === "confirmed" ? "" : !trend || basis === "season" || basis === "weather" ? reason : "";
 
   return (
     <div className="flex flex-col gap-4 text-body">
@@ -98,12 +115,28 @@ export function AreaDetails({ status, trend, now }: { status: AreaStatus; trend?
         {conflict && <p className="text-label font-normal text-muted">Golfers reported different things within a few hours. The newest report is shown.</p>}
       </div>
 
+      {rule && (
+        <div className="flex flex-col gap-1 rounded-md border-l-4 border-brass bg-cream px-3 py-2 text-label">
+          <p className="flex items-center gap-1.5 font-semibold text-ink">
+            <AdminMark />
+            Set by a Range Report admin: {rule.condition}
+            {rule.areaId === null && <span className="font-normal text-muted">(whole place)</span>}
+          </p>
+          <p className="font-normal text-ink">&ldquo;{rule.note}&rdquo;</p>
+          <p className="font-normal text-muted">
+            Since {shortDay(rule.startsOn)}
+            {rule.endsOn ? `, until ${shortDay(rule.endsOn)}` : ""}.
+            {basis !== "confirmed" && " A golfer's newer report is shown above."}
+          </p>
+        </div>
+      )}
+
       {trend ? (
         <div className="flex flex-col gap-2 border-t border-rule pt-4 text-label font-normal text-muted">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>Latest:</span>
+            <span>Latest golfer report:</span>
             <Rating condition={trend.latest} />
-            <span>· updated {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
+            <span>· {ageLabel(now.getTime() - new Date(trend.latestAt).getTime())}</span>
           </p>
           <span>
             Last 30 days · {trend.rated} {trend.rated === 1 ? "rating" : "ratings"}
@@ -122,11 +155,37 @@ export function AreaDetails({ status, trend, now }: { status: AreaStatus; trend?
               </li>
             ))}
           </ul>
+          {closedVisits > 0 && <ClosedVisits n={closedVisits} />}
+          {sourceNote && <p>{sourceNote}</p>}
         </div>
       ) : (
-        <p className="border-t border-rule pt-4 text-label font-normal text-muted">Nobody has rated this in the last 30 days.</p>
+        <div className="flex flex-col gap-2 border-t border-rule pt-4 text-label font-normal text-muted">
+          <p>Nobody has rated this in the last 30 days.</p>
+          {closedVisits > 0 && <ClosedVisits n={closedVisits} />}
+          {sourceNote && <p>{sourceNote}</p>}
+        </div>
       )}
     </div>
+  );
+}
+
+// A "closed when I got there" report rates no areas, but it's still news about every one.
+function ClosedVisits({ n }: { n: number }) {
+  return (
+    <p className="flex items-center gap-1.5">
+      <StateIcon state="closed" className="size-3.5 text-closed" />
+      {n === 1 ? "1 visit" : `${n} visits`} in the last 30 days found the whole place closed.
+    </p>
+  );
+}
+
+// The small seal next to anything an admin set (brass, like the admin boxes).
+export function AdminMark({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={cx("shrink-0 text-brass", className)} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5 L13.5 3.5 V8 C13.5 11 11 13.3 8 14.5 C5 13.3 2.5 11 2.5 8 V3.5 Z" />
+      <path d="M5.5 8 L7.2 9.7 L10.5 6.3" />
+    </svg>
   );
 }
 
@@ -148,10 +207,10 @@ export function MapKey() {
       <div className="flex flex-col gap-2">
         <p className="font-semibold text-ink">How sure</p>
         <ul className="flex flex-col gap-1.5">
-          <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />Solid: reported in the last day</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />Thin solid: a golfer reported it in the last day</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dashed border-ink")} />Dashed: this week, probably still true</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dotted border-ink")} />Dotted: published season, or the weather</li>
-          <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />&ldquo;Confirmed&rdquo;: set by a Range Report admin from golfers&apos; reports</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-[4px] border-ink")} />Heavy, &ldquo;admin&rdquo;: set by a Range Report admin. Tap for their note</li>
         </ul>
       </div>
       <p>Tap an area on the map for its reports.</p>
@@ -217,6 +276,7 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
               !shown ? "border-rule bg-surface text-muted" : last ? cx(stateText[shown.state], "border-current/40 bg-surface") : stateTone[shown.state],
               shown?.basis === "likely" && "border-dashed",
               (shown?.basis === "season" || shown?.basis === "weather") && "border-dotted",
+              shown?.basis === "confirmed" && "border-2",
             )}
           >
             {shown && <StateIcon state={shown.state} className="size-3.5" />}
@@ -226,7 +286,7 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
                 {last ? "last: " : ""}
                 {shown.basis === "likely" ? "probably " : ""}
                 {stateWord[shown.state].toLowerCase()}
-                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : shown.basis === "confirmed" ? " · confirmed" : ""}
+                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : shown.basis === "confirmed" ? " · admin" : ""}
               </span>
             ) : (
               <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>

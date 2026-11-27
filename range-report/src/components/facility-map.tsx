@@ -22,7 +22,7 @@ import { stateWord } from "@/components/status";
 const W = 600;
 const H = 320;
 
-type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null; faded?: boolean };
+type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null; faded?: boolean; heavy?: boolean };
 
 const tones = {
   open: { fill: "fill-open-tint", stroke: "stroke-open", text: "fill-open" },
@@ -40,7 +40,7 @@ const wordFor = (state: AreaStatus["state"], basis: AreaStatus["basis"]) =>
       : basis === "weather"
         ? `${stateWord[state].toLowerCase()} · storm`
         : basis === "confirmed"
-          ? `${stateWord[state].toLowerCase()} · confirmed`
+          ? `${stateWord[state].toLowerCase()} · admin`
           : stateWord[state].toLowerCase();
 
 function look(s: AreaStatus): Look {
@@ -50,11 +50,11 @@ function look(s: AreaStatus): Look {
     // tomorrow's session at night is exactly when this matters.
     if (s.lastKnown) {
       const { state, basis } = s.lastKnown;
-      return { ...tones[state], dash: dashFor(basis), word: `last: ${wordFor(state, basis)}`, faded: true };
+      return { ...tones[state], dash: dashFor(basis), word: `last: ${wordFor(state, basis)}`, faded: true, heavy: basis === "confirmed" };
     }
     return { fill: "fill-surface", stroke: "stroke-edge/40", text: "fill-muted", word: null };
   }
-  return { ...tones[s.state], dash: dashFor(s.basis), word: wordFor(s.state, s.basis) };
+  return { ...tones[s.state], dash: dashFor(s.basis), word: wordFor(s.state, s.basis), heavy: s.basis === "confirmed" };
 }
 
 // What a screen reader hears for an area.
@@ -110,7 +110,8 @@ function Area({
 }
 
 // "area-shape" is the outline the keyboard focus ring goes on (globals.css).
-const shape = (l: Look) => ({ className: cx("area-shape", l.fill, l.stroke), strokeWidth: 2.5, strokeDasharray: l.dash });
+// An admin's status gets a heavy outline, so it can't pass for a golfer's report.
+const shape = (l: Look) => ({ className: cx("area-shape", l.fill, l.stroke), strokeWidth: l.heavy ? 5.5 : 2.5, strokeDasharray: l.dash });
 
 // Flags and target greens: decoration only, never clickable.
 function Flag({ x, y }: { x: number; y: number }) {

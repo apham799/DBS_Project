@@ -203,7 +203,7 @@ function areaStatus(
     (c) => (c.areaId === null || c.areaId === area.id) && c.startsOn <= today && (!c.endsOn || today <= c.endsOn),
   );
   if (confirmed) {
-    return { ...base, state: confirmed.condition === "open" ? "open" : confirmed.condition, basis: "confirmed", reason: `${confirmed.note} · confirmed by Range Report` };
+    return { ...base, state: confirmed.condition === "open" ? "open" : confirmed.condition, basis: "confirmed", reason: `${confirmed.note} · set by a Range Report admin` };
   }
 
   if (season && !contradicted(season, area, reports)) return { ...base, state: season.condition, basis: "season", reason: season.note };
