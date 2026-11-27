@@ -118,7 +118,7 @@ export function AreaDetails({
       {rule && (
         <div className="flex flex-col gap-1 rounded-md border-l-4 border-brass bg-cream px-3 py-2 text-label">
           <p className="flex items-center gap-1.5 font-semibold text-ink">
-            <AdminMark />
+            <AdminStar />
             Set by a Range Report admin: {rule.condition}
             {rule.areaId === null && <span className="font-normal text-muted">(whole place)</span>}
           </p>
@@ -179,15 +179,6 @@ function ClosedVisits({ n }: { n: number }) {
   );
 }
 
-// The small seal next to anything an admin set (brass, like the admin boxes).
-export function AdminMark({ className = "size-3.5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={cx("shrink-0 text-brass", className)} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 1.5 L13.5 3.5 V8 C13.5 11 11 13.3 8 14.5 C5 13.3 2.5 11 2.5 8 V3.5 Z" />
-      <path d="M5.5 8 L7.2 9.7 L10.5 6.3" />
-    </svg>
-  );
-}
 
 // The heat map's key: what the fills and the outlines mean.
 export function MapKey() {
@@ -210,7 +201,10 @@ export function MapKey() {
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />Thin solid: a golfer reported it in the last day</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dashed border-ink")} />Dashed: this week, probably still true</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dotted border-ink")} />Dotted: published season, or the weather</li>
-          <li className="flex items-center gap-2"><span className={cx(swatch, "border-[4px] border-ink")} />Heavy, &ldquo;admin&rdquo;: set by a Range Report admin. Tap for their note</li>
+          <li className="flex items-center gap-2">
+            <span className="flex w-7 shrink-0 justify-between"><AdminStar className="size-2" /><AdminStar className="size-2" /><AdminStar className="size-2" /></span>
+            Lined with stars: set by a Range Report admin (around the map: the whole place). Tap for their note
+          </li>
         </ul>
       </div>
       <p>Tap an area on the map for its reports.</p>
@@ -260,12 +254,19 @@ export function headline(s: PlaceStatus): string | null {
 // the last known status, lighter and worded "last: limited", like the
 // facility map. The rest are plain chips that just say the area exists (an ✕
 // on "Chipping area" at night read as "no chipping area here").
+//
+// An admin's status for one area gets a star and "admin". One for
+// the whole place would make every chip loud, so the chips stay plain and one
+// quiet line after them says so (like the stars around the facility map).
 export function AreaDots({ status }: { status: PlaceStatus }) {
+  const known = (a: AreaStatus) => (a.basis !== "hours" ? { state: a.state, basis: a.basis, wholePlace: a.wholePlace } : (a.lastKnown ?? null));
+  const wholeByAdmin = status.areas.some((a) => known(a)?.basis === "confirmed" && known(a)?.wholePlace);
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Areas">
+    <ul className="flex flex-wrap items-center gap-1.5" aria-label="Areas">
       {status.areas.map((a) => {
-        const shown = a.basis !== "hours" ? { state: a.state, basis: a.basis } : a.lastKnown ?? null;
+        const shown = known(a);
         const last = a.basis === "hours" && shown !== null;
+        const areaAdmin = shown?.basis === "confirmed" && !shown.wholePlace;
         return (
           <li
             key={a.area.id}
@@ -276,7 +277,6 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
               !shown ? "border-rule bg-surface text-muted" : last ? cx(stateText[shown.state], "border-current/40 bg-surface") : stateTone[shown.state],
               shown?.basis === "likely" && "border-dashed",
               (shown?.basis === "season" || shown?.basis === "weather") && "border-dotted",
-              shown?.basis === "confirmed" && "border-2",
             )}
           >
             {shown && <StateIcon state={shown.state} className="size-3.5" />}
@@ -286,7 +286,13 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
                 {last ? "last: " : ""}
                 {shown.basis === "likely" ? "probably " : ""}
                 {stateWord[shown.state].toLowerCase()}
-                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : shown.basis === "confirmed" ? " · admin" : ""}
+                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : ""}
+                {areaAdmin && (
+                  <>
+                    {" · "}
+                    <AdminStar className="inline size-3 align-[-1px]" /> admin
+                  </>
+                )}
               </span>
             ) : (
               <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>
@@ -294,8 +300,33 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
           </li>
         );
       })}
+      {wholeByAdmin && (
+        <li className="flex items-center gap-1 text-label text-muted">
+          <AdminStar className="size-3" />
+          Whole place set by an admin
+        </li>
+      )}
     </ul>
   );
+}
+
+// The small brass star that marks a whole place set by an admin.
+export function AdminStar({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={cx("shrink-0 fill-brass", className)} aria-hidden>
+      <path d={starPath(8, 8.4, 7.5)} />
+    </svg>
+  );
+}
+
+// A five-pointed star centered on (cx, cy), outer radius r.
+export function starPath(cx: number, cy: number, r: number): string {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const rad = i % 2 ? r * 0.45 : r;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    return `${(cx + rad * Math.cos(a)).toFixed(2)} ${(cy + rad * Math.sin(a)).toFixed(2)}`;
+  });
+  return `M${pts.join(" L")} Z`;
 }
 
 // "How sure is this?" opens as a small floating panel over the page instead

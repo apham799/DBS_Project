@@ -194,6 +194,14 @@ describe("confirmed statuses (set by an admin)", () => {
     expect(area(placeStatus(withRule({ startsOn: "2026-11-20" }), [], tuesday), "range").basis).toBe("season");
     expect(area(placeStatus(withRule({ endsOn: "2026-11-16" }), [], tuesday), "range").basis).toBe("season");
   });
+
+  it("say whether they cover the whole place, and one for an area beats one for the whole place", () => {
+    const whole = { id: "w", areaId: null, condition: "closed" as const, note: "Closed for the season", startsOn: "2026-11-16", endsOn: null };
+    const both: Place = { ...withRule(), confirmed: [whole, ...withRule().confirmed!] };
+    const s = placeStatus(both, [], tuesday);
+    expect(area(s, "range")).toMatchObject({ state: "limited", basis: "confirmed", wholePlace: false });
+    expect(area(s, "putting")).toMatchObject({ state: "closed", basis: "confirmed", wholePlace: true });
+  });
 });
 
 describe("hours and weather come first", () => {

@@ -8,7 +8,7 @@ import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { ReportSourcePicker } from "@/components/place-filters";
 import { askToSignIn } from "@/components/sign-in-prompt";
-import { AdminMark, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
+import { AdminStar, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
@@ -380,7 +380,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
           // screens, below it on phones. Tapping an area opens its details.
           <div className="grid items-start gap-6 lg:grid-cols-12">
             <div className="lg:col-span-8 2xl:col-span-7">
-              <FacilityMap place={place} status={status} onSelect={setSelected} />
+              <FacilityMap place={place} status={status} onSelect={setSelected} wholeRule={activeRules.find((c) => c.areaId === null)} />
             </div>
             <div className="lg:col-span-4 2xl:col-span-5">
               <MapKey />
@@ -420,7 +420,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
           {activeRules.length > 0 && (
             <div className="flex flex-col gap-1 rounded-md border-l-4 border-brass bg-surface px-3 py-2">
               <p className="flex items-center gap-1.5 text-label font-semibold text-ink">
-                <AdminMark />
+                <AdminStar />
                 Set by a Range Report admin
               </p>
               <ul className="flex flex-col gap-1 text-body">

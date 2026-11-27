@@ -54,9 +54,10 @@ export type AreaStatus = {
   reason: string;
   reportedAt: string | null; // the report this is based on, if any
   conflict: boolean; // a report shortly before it disagreed
+  wholePlace?: boolean; // basis "confirmed": the admin set the whole place, not just this area
   // While the place is closed by its hours: what this area would show if it
   // were open (a report, the season), so the map can still say "last known".
-  lastKnown?: { state: AreaState; basis: Exclude<Basis, "hours"> } | null;
+  lastKnown?: { state: AreaState; basis: Exclude<Basis, "hours">; wholePlace?: boolean } | null;
 };
 
 export type PlaceStatus = {
@@ -125,7 +126,7 @@ function areaStatus(
   if (!hours.open) {
     const known = areaStatus(place, area, reports, now, { ...hours, open: true }, null);
     const reason = known.basis === "hours" ? lastReport(reports, area, now) : known.reason;
-    const lastKnown = known.basis === "hours" ? null : { state: known.state, basis: known.basis };
+    const lastKnown = known.basis === "hours" ? null : { state: known.state, basis: known.basis, wholePlace: known.wholePlace };
     return { ...known, state: "closed", basis: "hours", reason, lastKnown };
   }
 
@@ -198,12 +199,18 @@ function areaStatus(
   }
 
   // An admin's confirmed status: below a fresh golfer report (checked above),
-  // above any published season (checked below).
-  const confirmed = (place.confirmed ?? []).find(
-    (c) => (c.areaId === null || c.areaId === area.id) && c.startsOn <= today && (!c.endsOn || today <= c.endsOn),
-  );
+  // above any published season (checked below). One for this area beats one
+  // for the whole place.
+  const inEffect = (place.confirmed ?? []).filter((c) => c.startsOn <= today && (!c.endsOn || today <= c.endsOn));
+  const confirmed = inEffect.find((c) => c.areaId === area.id) ?? inEffect.find((c) => c.areaId === null);
   if (confirmed) {
-    return { ...base, state: confirmed.condition === "open" ? "open" : confirmed.condition, basis: "confirmed", reason: `${confirmed.note} · set by a Range Report admin` };
+    return {
+      ...base,
+      state: confirmed.condition === "open" ? "open" : confirmed.condition,
+      basis: "confirmed",
+      reason: `${confirmed.note} · set by a Range Report admin`,
+      wholePlace: confirmed.areaId === null,
+    };
   }
 
   if (season && !contradicted(season, area, reports)) return { ...base, state: season.condition, basis: "season", reason: season.note };

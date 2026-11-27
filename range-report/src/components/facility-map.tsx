@@ -1,15 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { cx } from "@/components/ui";
 import type { AreaStatus, PlaceStatus } from "@/lib/status";
-import type { AreaKind, Place } from "@/lib/types";
-import { stateWord } from "@/components/status";
+import type { AreaKind, ConfirmedRule, Place } from "@/lib/types";
+import { AdminStar, starPath, stateWord } from "@/components/status";
 
 // The facility heat map (Lauren's idea): a sketch of the place with each area
 // filled by its status right now, using the same colors and "how sure"
 // outlines as the area rows (solid = reported today, dashed = probably,
-// dotted = season or weather, plain white = nothing known).
+// dotted = season or weather, plain white = nothing known). Stars mean an
+// admin set it: along an area's outline for that area, around the whole
+// sketch for the whole place.
 //
 // It's a SKETCH, not a survey: the same layout rules for every place (range on
 // the left with its tee line, short game on the right; simulator rooms as rows
@@ -22,7 +24,7 @@ import { stateWord } from "@/components/status";
 const W = 600;
 const H = 320;
 
-type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null; faded?: boolean; heavy?: boolean };
+type Look = { fill: string; stroke: string; dash?: string; text: string; word: string | null; faded?: boolean; starred?: boolean };
 
 const tones = {
   open: { fill: "fill-open-tint", stroke: "stroke-open", text: "fill-open" },
@@ -50,15 +52,20 @@ function look(s: AreaStatus): Look {
     // tomorrow's session at night is exactly when this matters.
     if (s.lastKnown) {
       const { state, basis } = s.lastKnown;
-      return { ...tones[state], dash: dashFor(basis), word: `last: ${wordFor(state, basis)}`, faded: true, heavy: basis === "confirmed" };
+      const whole = basis === "confirmed" && s.lastKnown.wholePlace;
+      return { ...tones[state], dash: dashFor(basis), word: `last: ${whole ? stateWord[state].toLowerCase() : wordFor(state, basis)}`, faded: true, starred: basis === "confirmed" && !whole };
     }
     return { fill: "fill-surface", stroke: "stroke-edge/40", text: "fill-muted", word: null };
   }
-  return { ...tones[s.state], dash: dashFor(s.basis), word: wordFor(s.state, s.basis), heavy: s.basis === "confirmed" };
+  // An admin's status for the whole place: the stars around the map say so,
+  // so each area stays plain (if every area had stars, none would stand out).
+  if (s.basis === "confirmed" && s.wholePlace) return { ...tones[s.state], word: stateWord[s.state].toLowerCase() };
+  return { ...tones[s.state], dash: dashFor(s.basis), word: wordFor(s.state, s.basis), starred: s.basis === "confirmed" };
 }
 
 // What a screen reader hears for an area.
 const spoken = (s: AreaStatus) => {
+  if (s.basis === "confirmed" && s.wholePlace) return `${look(s).word}, set for the whole place by a Range Report admin`;
   if (s.basis !== "hours") return look(s).word!;
   const last = s.lastKnown ? `, last known ${wordFor(s.lastKnown.state, s.lastKnown.basis)}` : "";
   return (s.state === "closed" ? "closed by its hours" : "no current report") + last;
@@ -78,6 +85,7 @@ function Area({
 }) {
   const l = look(status);
   const size = label.small ? 12 : 15;
+  const [shapes, stars] = useStarsAlong(!!l.starred);
   return (
     <g
       role="button"
@@ -93,7 +101,14 @@ function Area({
       }}
     >
       {/* Last known while the place is closed: same color, faded. */}
-      <g opacity={l.faded ? 0.55 : 1}>{children(l)}</g>
+      <g opacity={l.faded ? 0.55 : 1}>
+        <g ref={shapes}>{children(l)}</g>
+        {stars.length > 0 && (
+          <g className="pointer-events-none fill-brass stroke-surface" strokeWidth={1}>
+            {stars.map(([x, y], i) => <path key={i} d={starPath(x, y, 5)} />)}
+          </g>
+        )}
+      </g>
       <text x={label.x} y={label.y} textAnchor="middle" className="pointer-events-none select-none" style={{ fontSize: size }} aria-hidden>
         <tspan className="fill-ink font-semibold">{status.area.label}</tspan>
         {l.word &&
@@ -110,8 +125,34 @@ function Area({
 }
 
 // "area-shape" is the outline the keyboard focus ring goes on (globals.css).
-// An admin's status gets a heavy outline, so it can't pass for a golfer's report.
-const shape = (l: Look) => ({ className: cx("area-shape", l.fill, l.stroke), strokeWidth: l.heavy ? 5.5 : 2.5, strokeDasharray: l.dash });
+const shape = (l: Look) => ({ className: cx("area-shape", l.fill, l.stroke), strokeWidth: 2.5, strokeDasharray: l.dash });
+
+// Small stars spaced along an area's outline(s), for an admin's status, so it
+// can't pass for a golfer's report. The outlines are rects, ellipses and
+// paths, so they're measured in the browser rather than worked out here.
+const STAR_STEP = 24;
+function useStarsAlong(enabled: boolean) {
+  const [points, setPoints] = useState<[number, number][]>([]);
+  const ref = useCallback(
+    (g: SVGGElement | null) => {
+      if (!g) return;
+      const out: [number, number][] = [];
+      if (enabled) {
+        g.querySelectorAll<SVGGeometryElement>(".area-shape").forEach((el) => {
+          const len = el.getTotalLength();
+          const n = Math.max(6, Math.round(len / STAR_STEP));
+          for (let i = 0; i < n; i++) {
+            const p = el.getPointAtLength((len * i) / n);
+            out.push([Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
+          }
+        });
+      }
+      setPoints((prev) => (prev.length === out.length && prev.every((p, i) => p[0] === out[i][0] && p[1] === out[i][1]) ? prev : out));
+    },
+    [enabled],
+  );
+  return [ref, points] as const;
+}
 
 // Flags and target greens: decoration only, never clickable.
 function Flag({ x, y }: { x: number; y: number }) {
@@ -319,7 +360,40 @@ function Dome({ byKind, onSelect }: { byKind: Partial<Record<AreaKind, AreaStatu
   );
 }
 
-export function FacilityMap({ place, status, onSelect }: { place: Place; status: PlaceStatus; onSelect: (areaId: string) => void }) {
+// A quiet frame of small brass stars just outside the sketch: an admin set the
+// whole place. Drawn in a margin the areas never reach.
+const FRAME = 16;
+function StarFrame() {
+  const step = 26;
+  const x0 = -FRAME / 2, y0 = -FRAME / 2, x1 = W + FRAME / 2, y1 = H + FRAME / 2;
+  const along = (a: number, b: number) => {
+    const n = Math.max(1, Math.round((b - a) / step));
+    return Array.from({ length: n + 1 }, (_, i) => a + ((b - a) * i) / n);
+  };
+  const pts: [number, number][] = [
+    ...along(x0, x1).map((x) => [x, y0] as [number, number]),
+    ...along(x0, x1).map((x) => [x, y1] as [number, number]),
+    ...along(y0, y1).slice(1, -1).map((y) => [x0, y] as [number, number]),
+    ...along(y0, y1).slice(1, -1).map((y) => [x1, y] as [number, number]),
+  ];
+  return (
+    <g className="pointer-events-none fill-brass" opacity={0.85} aria-hidden>
+      {pts.map(([x, y]) => <path key={`${x},${y}`} d={starPath(x, y, 4.2)} />)}
+    </g>
+  );
+}
+
+export function FacilityMap({
+  place,
+  status,
+  onSelect,
+  wholeRule,
+}: {
+  place: Place;
+  status: PlaceStatus;
+  onSelect: (areaId: string) => void;
+  wholeRule?: ConfirmedRule; // an admin's status for the whole place, in effect today
+}) {
   // One area per kind is all any place has today; the first one wins if not.
   const byKind: Partial<Record<AreaKind, AreaStatus>> = {};
   for (const a of status.areas) byKind[a.area.kind] ??= a;
@@ -331,7 +405,13 @@ export function FacilityMap({ place, status, onSelect }: { place: Place; status:
   return (
     <figure className="flex flex-col gap-2">
       {/* A group of buttons, one per area: Tab moves between them, Enter opens one. */}
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full rounded-lg bg-cream/40" role="group" aria-label={`Sketch of ${place.name}. ${summary}.`}>
+      <svg
+        viewBox={wholeRule ? `${-FRAME} ${-FRAME} ${W + 2 * FRAME} ${H + 2 * FRAME}` : `0 0 ${W} ${H}`}
+        className="h-auto w-full rounded-lg bg-cream/40"
+        role="group"
+        aria-label={`Sketch of ${place.name}. ${summary}.`}
+      >
+        {wholeRule && <StarFrame />}
         {place.kind === "sim" ? (
           <Sim byKind={byKind} onSelect={onSelect} />
         ) : !byKind.range && byKind.bays ? (
@@ -341,7 +421,18 @@ export function FacilityMap({ place, status, onSelect }: { place: Place; status:
           <WalkIn byKind={byKind} onSelect={onSelect} />
         )}
       </svg>
-      <figcaption className="text-label font-normal text-muted">Sketch, not to scale.</figcaption>
+      <figcaption className="flex flex-col gap-1 text-label font-normal text-muted">
+        {wholeRule && (
+          <span className="flex items-start gap-1.5 text-ink">
+            <AdminStar className="mt-0.5 size-3.5" />
+            <span>
+              A Range Report admin set the whole place to {wholeRule.condition}.
+              {status.areas.some((a) => a.basis === "report" || a.basis === "likely") && " Areas golfers reported since show their report."}
+            </span>
+          </span>
+        )}
+        <span>Sketch, not to scale.</span>
+      </figcaption>
     </figure>
   );
 }
