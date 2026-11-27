@@ -98,6 +98,7 @@ Guest posting, the clearer cards and the patterns job stay.
   - **Votes:** up or down, one per golfer, never on your own report. Down by 2+ more than up means the report stops counting.
   - **"Show N hidden reports":** like hidden comments, it reveals reports hidden by votes or by an admin.
   - **Suggestions for admins:** golfers agree on something not yet confirmed; a published season golfers contradict; a confirmed status recent reports disagree with; notes mentioning a different closing time.
+  - **Admin page (`/admin`):** every place's suggestions in one list, behind an Admin tab only admins see (with the count). Confirm and End work there; Edit first and hours open the place's admin boxes.
 
 **Still to do:** the patterns job, the city map, checkpoint #2, fair prep.
 
