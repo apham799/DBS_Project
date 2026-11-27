@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AiSummaryResponse } from "@/app/api/summary/[id]/route";
+import type { ReportSource } from "./report-source";
 
 export type AiSummaryState = { status: "idle" } | { status: "loading" } | AiSummaryResponse;
 
@@ -11,20 +12,20 @@ export type AiSummaryState = { status: "idle" } | { status: "loading" } | AiSumm
 //
 // While a refresh is on its way the previous summary stays up (no flicker back
 // to a skeleton); "loading" only shows the first time.
-export function useAiSummary(placeId: string, key: string, enabled: boolean): AiSummaryState {
+export function useAiSummary(placeId: string, key: string, enabled: boolean, source: ReportSource = "everyone"): AiSummaryState {
   const [result, setResult] = useState<{ key: string; state: AiSummaryResponse } | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    fetch(`/api/summary/${encodeURIComponent(placeId)}`)
+    fetch(`/api/summary/${encodeURIComponent(placeId)}${source === "everyone" ? "" : `?from=${source}`}`)
       .then((r) => r.json() as Promise<AiSummaryResponse>)
       .catch((): AiSummaryResponse => ({ status: "error" }))
       .then((state) => !cancelled && setResult({ key, state }));
     return () => {
       cancelled = true;
     };
-  }, [placeId, key, enabled]);
+  }, [placeId, key, enabled, source]);
 
   if (!enabled) return { status: "idle" };
   return result ? result.state : { status: "loading" };

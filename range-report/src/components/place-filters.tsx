@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { cx } from "@/components/ui";
 import { FEATURES, isFiltering, NO_FILTERS, type Feature, type Filters, type Setting } from "@/lib/filters";
+import { REPORT_SOURCES, type ReportSource } from "@/lib/report-source";
+import { setReportSource, useReportSource } from "@/lib/use-report-source";
 
 // The filters above the place list: what you need (any number, all must
 // match), indoor or outdoor, and open now. These are real buttons, so they
@@ -35,6 +37,20 @@ const SETTINGS: { id: Setting | null; label: string }[] = [
   { id: "indoor", label: "Indoor" },
 ];
 
+// "Reports from": whose reports count, everywhere (it's remembered for this browser).
+export function ReportSourcePicker() {
+  const source = useReportSource();
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Reports from">
+      {REPORT_SOURCES.map((s) => (
+        <Chip key={s.id} on={source === s.id} onClick={() => setReportSource(s.id)}>
+          {s.label}
+        </Chip>
+      ))}
+    </div>
+  );
+}
+
 export function PlaceFilters({
   filters,
   onChange,
@@ -46,6 +62,7 @@ export function PlaceFilters({
   shown: number;
   total: number;
 }) {
+  const source: ReportSource = useReportSource();
   const toggle = (f: Feature) =>
     onChange({ ...filters, features: filters.features.includes(f) ? filters.features.filter((x) => x !== f) : [...filters.features, f] });
 
@@ -75,14 +92,22 @@ export function PlaceFilters({
           </Chip>
         </div>
       </div>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
+        <span className="text-label font-semibold text-muted lg:w-28 lg:shrink-0">Reports from</span>
+        <ReportSourcePicker />
+      </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-rule pt-3 text-label text-muted">
         <span role="status">
           {isFiltering(filters) ? `Showing ${shown} of ${total} places` : `All ${total} places`}
+          {source !== "everyone" && ` · ${source === "accounts" ? "reports from golfers with accounts" : "guest reports"} only`}
         </span>
-        {isFiltering(filters) && (
+        {(isFiltering(filters) || source !== "everyone") && (
           <button
             type="button"
-            onClick={() => onChange(NO_FILTERS)}
+            onClick={() => {
+              onChange(NO_FILTERS);
+              setReportSource("everyone");
+            }}
             className="rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green"
           >
             Clear filters

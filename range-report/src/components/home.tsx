@@ -9,7 +9,9 @@ import { PlaceFilters } from "@/components/place-filters";
 import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
 import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
+import { bySource } from "@/lib/report-source";
 import { effectiveNow, placeStatus } from "@/lib/status";
+import { setReportSource, useReportSource } from "@/lib/use-report-source";
 import { useFollows } from "@/lib/use-follows";
 import { useReports, type LiveStatus } from "@/lib/use-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
@@ -92,7 +94,10 @@ function usePlacesOpen(): [boolean, (open: boolean) => void] {
 }
 
 export function Home() {
-  const { reports, loaded, error, live, justAdded, retry } = useReports();
+  const { reports: allReports, loaded, error, live, justAdded, retry } = useReports();
+  // "Reports from": applied once, here, so every status below agrees with it.
+  const source = useReportSource();
+  const reports = useMemo(() => bySource(allReports, source), [allReports, source]);
   const weather = useWeather();
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
@@ -222,7 +227,16 @@ export function Home() {
             {visible.length === 0 ? (
               <div className="flex flex-col items-start gap-2 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 p-5">
                 <p className="text-body">No places match all of those.</p>
-                <Button size="sm" variant="secondary" onClick={() => setFilters(NO_FILTERS)}>Clear filters</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setFilters(NO_FILTERS);
+                    setReportSource("everyone");
+                  }}
+                >
+                  Clear filters
+                </Button>
               </div>
             ) : (
               <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>

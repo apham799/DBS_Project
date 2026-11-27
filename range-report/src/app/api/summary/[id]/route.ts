@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { placeById } from "@/data/places";
 import { aiSummary, aiSummaryEnabled, MAX_REPORTS, MIN_NOTES, reportsBlock } from "@/lib/ai-summary-server";
+import { bySource, isReportSource } from "@/lib/report-source";
 import { SUMMARY_DAYS } from "@/lib/summary";
 import type { Report } from "@/lib/types";
 
@@ -30,7 +31,7 @@ const json = (body: AiSummaryResponse, status = 200) => Response.json(body, { st
 const BACKOFF_MS = 5 * 60_000;
 const backoff = new Map<string, number>();
 
-export async function GET(_req: NextRequest, ctx: RouteContext<"/api/summary/[id]">) {
+export async function GET(req: NextRequest, ctx: RouteContext<"/api/summary/[id]">) {
   const { id } = await ctx.params;
   const place = placeById(id);
   if (!place) return Response.json({ error: "Unknown place" }, { status: 404 });
@@ -39,14 +40,16 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/summary/[id
   const since = new Date(Date.now() - SUMMARY_DAYS * 86400_000).toISOString();
   const { data, error } = await db
     .from("reports")
-    .select("id, place_id, created_at, place_open, areas, crowd, note")
+    .select("id, place_id, created_at, place_open, areas, crowd, note, source")
     .eq("place_id", place.id)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(MAX_REPORTS);
   if (error) return json({ status: "error" }, 502);
 
-  const reports: Report[] = data.map((r) => ({
+  // "Reports from" on the page: summarize the same reports it shows.
+  const from = req.nextUrl.searchParams.get("from");
+  const fetched: Report[] = data.map((r) => ({
     id: r.id,
     placeId: r.place_id,
     createdAt: r.created_at,
@@ -54,7 +57,9 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/summary/[id
     areas: r.areas ?? {},
     crowd: r.crowd,
     note: r.note,
+    source: r.source,
   }));
+  const reports = bySource(fetched, isReportSource(from) ? from : "everyone");
   const notes = reports.filter((r) => r.note).length;
   if (notes < MIN_NOTES) return json({ status: "few_notes", notes });
 

@@ -5,11 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
+import { ReportSourcePicker } from "@/components/place-filters";
 import { askToSignIn } from "@/components/sign-in-prompt";
 import { AreaDetails, crowdWord, GuestTag, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
+import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
+import { useReportSource } from "@/lib/use-report-source";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
@@ -112,11 +115,11 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
 // Before that, it's a different-looking card on purpose (dashed, no shadow,
 // its own icon, no status colors, since those all mean a condition): how
 // many more reports are needed, and a button to post one.
-function SummaryCard({ place, reports, now }: { place: Place; reports: Report[]; now: Date }) {
+function SummaryCard({ place, reports, now, source }: { place: Place; reports: Report[]; now: Date; source: ReportSource }) {
   const recent = useMemo(() => recentReports(place, reports, now), [place, reports, now]);
   const summary = useMemo(() => summarizeReports(place, reports, now), [place, reports, now]);
   const notedKey = recent.filter((r) => r.note).map((r) => r.id).join(",");
-  const ai = useAiSummary(place.id, notedKey, summary !== null);
+  const ai = useAiSummary(place.id, notedKey, summary !== null, source);
 
   if (!summary) {
     const have = Math.min(recent.length, MIN_REPORTS);
@@ -176,7 +179,10 @@ function SummaryCard({ place, reports, now }: { place: Place; reports: Report[];
 
 export function PlaceView({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
-  const { reports, loaded, error, live, retry } = useReports();
+  const { reports: allReports, loaded, error, live, retry } = useReports();
+  // "Reports from": applied once, here, so the map, summary and list agree.
+  const source = useReportSource();
+  const reports = useMemo(() => bySource(allReports, source), [allReports, source]);
   const weather = useWeather();
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
@@ -257,10 +263,17 @@ export function PlaceView({ placeId }: { placeId: string }) {
       {follows.error && <Alert tone="error" title={follows.error} onDismiss={follows.clearError} />}
 
       <section className="flex flex-col gap-4" aria-labelledby="areas">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 id="areas" className="text-heading">Right now</h2>
-          <LiveDot live={live} compact />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="areas" className="text-heading">Right now</h2>
+            <LiveDot live={live} compact />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-label font-semibold text-muted">Reports from</span>
+            <ReportSourcePicker />
+          </div>
         </div>
+        {sourceNote[source] && <p className="text-label font-semibold text-limited">{sourceNote[source]}</p>}
         {ready ? (
           // The heat map is the whole section: its key beside it on wide
           // screens, below it on phones. Tapping an area opens its details.
@@ -294,7 +307,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
           smaller ones. items-start: each card is only as tall as its content
           (stretching the shorter one to match left a lot of empty space). */}
       <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
-        <div className="lg:col-span-7">{ready && <SummaryCard place={place} reports={reports} now={now} />}</div>
+        <div className="lg:col-span-7">{ready && <SummaryCard place={place} reports={reports} now={now} source={source} />}</div>
 
         <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
           <h2 id="published" className="text-heading">Published info</h2>
