@@ -3,6 +3,7 @@
 import { Show } from "@clerk/nextjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
+import { AdminPanel } from "@/components/admin-panel";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { ReportSourcePicker } from "@/components/place-filters";
@@ -14,6 +15,7 @@ import { settingOf } from "@/lib/filters";
 import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
 import { useReportSource } from "@/lib/use-report-source";
 import { usePlaceConfig } from "@/lib/use-place-config";
+import { useIsAdmin } from "@/lib/use-is-admin";
 import { useDb } from "@/lib/db";
 import { counts, hiddenLabel, hiddenWhy } from "@/lib/report-visibility";
 import { useVotes } from "@/lib/use-votes";
@@ -183,8 +185,9 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
 
 export function PlaceView({ placeId }: { placeId: string }) {
   // The place, with what admins have set (confirmed statuses, hours) merged in.
-  const { withConfig } = usePlaceConfig();
+  const { withConfig, reload: reloadConfig } = usePlaceConfig();
   const place = useMemo(() => withConfig(placeById(placeId)!), [withConfig, placeId]);
+  const isAdmin = useIsAdmin();
   const { reports: allReports, loaded, error, live, retry, update } = useReports();
   const { db } = useDb();
   // After a vote, read that report again so its counts update even without Realtime.
@@ -217,6 +220,8 @@ export function PlaceView({ placeId }: { placeId: string }) {
   // Hidden reports (by an admin, or voted down) don't count toward anything;
   // they're still listed, behind "Show hidden reports".
   const reports = useMemo(() => sourced.filter(counts), [sourced]);
+  // Admin suggestions look at every report that counts, whatever "Reports from" says.
+  const everyCounting = useMemo(() => allReports.filter(counts), [allReports]);
   const weather = useWeather();
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
@@ -269,6 +274,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
         {/* Same chips as the place cards and My Log. */}
         <ReportChips place={place} report={r} />
         {r.note && <p className="text-body italic text-ink/80">&ldquo;{r.note}&rdquo;</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2">
         <VoteButtons
           up={r.upVotes ?? 0}
           down={r.downVotes ?? 0}
@@ -280,6 +286,23 @@ export function PlaceView({ placeId }: { placeId: string }) {
               : askToSignIn({ title: "Vote on reports", reason: "Sign in to vote reports up or down. Votes help everyone see which reports to trust." })
           }
         />
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={async () => {
+              const hide = !r.hiddenAt;
+              const reason = hide ? window.prompt("Why hide this report? (shown with it)", "Not about this facility") : null;
+              if (hide && reason === null) return;
+              const { error } = await db.rpc("admin_hide_report", { p_report_id: r.id, p_hidden: hide, p_reason: reason });
+              if (error) window.alert(`Couldn't ${hide ? "hide" : "unhide"} it: ${error.message}`);
+              else refetch(r.id);
+            }}
+            className="rounded-sm text-label font-semibold text-muted hover:text-error hover:underline"
+          >
+            {r.hiddenAt ? "Unhide (admin)" : "Hide (admin)"}
+          </button>
+        )}
+        </div>
       </li>
     );
   };
@@ -358,6 +381,8 @@ export function PlaceView({ placeId }: { placeId: string }) {
           </div>
         )}
       </section>
+
+      {ready && isAdmin && <AdminPanel place={place} reports={everyCounting} now={now} onChanged={reloadConfig} />}
 
       {ready && (
         <AreaDialog
