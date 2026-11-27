@@ -5,12 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress, SettingBadge } from "@/components/status";
+import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
-import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
+import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
 import { useAiSummary } from "@/lib/use-ai-summary";
 import { useFollows } from "@/lib/use-follows";
@@ -305,11 +305,12 @@ export function PlaceView({ placeId }: { placeId: string }) {
         {recent.length > 0 && (
           <ol className="flex flex-col divide-y divide-rule rounded-lg border border-rule">
             {recent.map((r) => (
-              <li key={r.id} className="flex flex-col gap-0.5 px-4 py-3">
+              <li key={r.id} className="flex flex-col gap-2 px-4 py-3">
                 <p className="text-label text-muted">
                   {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
                 </p>
-                <p className="text-body">{reportLine(place, r)}</p>
+                {/* Same chips as the place cards and My Log. */}
+                <ReportChips place={place} report={r} />
                 {r.note && <p className="text-body italic text-ink/80">&ldquo;{r.note}&rdquo;</p>}
               </li>
             ))}
