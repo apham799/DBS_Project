@@ -125,3 +125,13 @@
   stroke-width: 5;
   stroke-dasharray: none;
 }
+
+/* Jumps within a page ("Find a place") glide instead of cutting, so it's clear
+   you're still on the same page. Page changes stay instant: Next.js turns this
+   off while navigating (data-scroll-behavior="smooth" on <html>). Anyone who
+   asks their system for less motion gets the instant jump. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

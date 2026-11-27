@@ -17,9 +17,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#f8f2e4" };
 
+// data-scroll-behavior="smooth": smooth scrolling (globals.css) is for jumps
+// within a page, like "Find a place". This tells Next.js to switch it off while
+// changing pages, so a new page still starts at the top instantly.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${playfair.variable} ${franklin.variable} antialiased`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${playfair.variable} ${franklin.variable} antialiased`}>
       <body className="min-h-dvh bg-page text-ink">
         <ClerkProvider>
           <a href="#main" className="sr-only z-50 rounded-md bg-green px-4 py-3 font-semibold text-on-green focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
