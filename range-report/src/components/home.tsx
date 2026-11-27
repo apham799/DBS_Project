@@ -2,9 +2,8 @@
 
 import { Show } from "@clerk/nextjs";
 import { useMemo } from "react";
+import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
-import { Legend } from "@/components/status";
-import { openWelcome } from "@/components/welcome";
 import { Alert, Button, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
 import { effectiveNow, placeStatus } from "@/lib/status";
@@ -73,16 +72,7 @@ export function Home() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <h1 className="text-display">Before you drive</h1>
-        <p className="max-w-2xl text-body text-muted">
-          What&apos;s actually open, usable and crowded at Chicago practice spots, from golfers who were just there. Published hours say a place is open. Reports say whether the part you need is.
-        </p>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <LiveDot live={live} />
-          <Legend />
-        </div>
-      </section>
+      <Hero live={<LiveDot live={live} />} />
 
       {error && (
         <Alert tone="error" title="Couldn't load reports" action={<Button size="sm" variant="secondary" onClick={retry}>Try again</Button>}>
@@ -92,6 +82,8 @@ export function Home() {
       {follows.error && <Alert tone="error" title={follows.error} onDismiss={follows.clearError} />}
       {weather.status === "error" && <Alert tone="warning" title="Weather is unavailable right now">Statuses still show, without the thunderstorm check.</Alert>}
 
+      {/* "Find a place" in the hero scrolls here (below the sticky header). */}
+      <div id="places" className="flex scroll-mt-24 flex-col gap-8">
       {!loaded || !statuses ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
           {places.slice(0, 4).map((p) => (
@@ -116,14 +108,7 @@ export function Home() {
               </Show>
               <Show when="signed-out">
                 <p className="text-body text-muted">
-                  <TextLink href="/sign-up">Sign up</TextLink> to follow your places and post what you find.{" "}
-                  <button
-                    type="button"
-                    onClick={openWelcome}
-                    className="rounded-sm font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green"
-                  >
-                    How it works
-                  </button>
+                  <TextLink href="/sign-up">Sign up</TextLink> to follow your places and post what you find.
                 </p>
               </Show>
             </div>
@@ -131,6 +116,7 @@ export function Home() {
           </section>
         </>
       )}
+      </div>
     </div>
   );
 }
