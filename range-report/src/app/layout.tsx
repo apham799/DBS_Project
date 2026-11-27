@@ -1,12 +1,13 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Libre_Franklin } from "next/font/google";
+import { Libre_Franklin, Playfair_Display } from "next/font/google";
 import { Suspense } from "react";
 import { Header } from "@/components/header";
 import "./globals.css";
 
-// Two typefaces, as in Bucket List: Fraunces for headings, Libre Franklin for the rest.
-const fraunces = Fraunces({ subsets: ["latin"], axes: ["opsz"], variable: "--font-fraunces" });
+// Two typefaces: Playfair Display for headings (high contrast, editorial), Libre
+// Franklin for everything else, so cards and forms stay easy to read.
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
 const franklin = Libre_Franklin({ subsets: ["latin"], variable: "--font-franklin" });
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const viewport: Viewport = { themeColor: "#f8f2e4" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${franklin.variable} antialiased`}>
+    <html lang="en" className={`${playfair.variable} ${franklin.variable} antialiased`}>
       <body className="min-h-dvh bg-page text-ink">
         <ClerkProvider>
           <a href="#main" className="sr-only z-50 rounded-md bg-green px-4 py-3 font-semibold text-on-green focus:not-sr-only focus:fixed focus:left-4 focus:top-4">

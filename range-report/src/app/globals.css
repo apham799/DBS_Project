@@ -8,7 +8,7 @@
   Contrast ratios are on white; see README "Accessibility" for the full table.
 */
 @theme {
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-display: var(--font-playfair), Georgia, serif;
   --font-sans: var(--font-franklin), system-ui, sans-serif;
 
   /* Surfaces */
