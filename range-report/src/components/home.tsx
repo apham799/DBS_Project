@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceFilters } from "@/components/place-filters";
-import { Alert, Button, Skeleton, TextLink } from "@/components/ui";
+import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
 import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
 import { effectiveNow, placeStatus } from "@/lib/status";
@@ -70,6 +70,26 @@ function useFilters(): [Filters, (f: Filters) => void] {
   return [filters, set];
 }
 
+// Whether the place list under the banner is open. First-time visitors start
+// with just the banner; once you open it, it stays open on later visits
+// (localStorage). Read after mount, so server and first render agree.
+const PLACES_OPEN_KEY = "range-report:places-open";
+
+function usePlacesOpen(): [boolean, (open: boolean) => void] {
+  const [open, setState] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (localStorage.getItem(PLACES_OPEN_KEY) === "1") setState(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const set = (next: boolean) => {
+    setState(next);
+    localStorage.setItem(PLACES_OPEN_KEY, next ? "1" : "0");
+  };
+  return [open, set];
+}
+
 export function Home() {
   const { reports, loaded, error, live, justAdded, retry } = useReports();
   const weather = useWeather();
@@ -88,6 +108,8 @@ export function Home() {
   );
 
   const [filters, setFilters] = useFilters();
+  const [placesOpen, setPlacesOpen] = usePlacesOpen();
+  const [instant, setInstant] = useState(false);
   const visible = places.filter((p) => matches(p, statuses?.[p.id], filters));
   const mine = visible.filter((p) => follows.following.has(p.id));
   const others = visible.filter((p) => !follows.following.has(p.id));
@@ -107,7 +129,20 @@ export function Home() {
 
   return (
     <div className="flex flex-col gap-8">
-      <Hero live={<LiveDot live={live} />} />
+      <Hero
+        live={<LiveDot live={live} />}
+        placesOpen={placesOpen}
+        onTogglePlaces={() => {
+          setInstant(false);
+          setPlacesOpen(!placesOpen);
+        }}
+        // Opening for "Find a place" is instant, so the page is long enough to
+        // scroll down to the list straight away.
+        onFind={() => {
+          setInstant(true);
+          setPlacesOpen(true);
+        }}
+      />
 
       {error && (
         <Alert tone="error" title="Couldn't load reports" action={<Button size="sm" variant="secondary" onClick={retry}>Try again</Button>}>
@@ -117,8 +152,20 @@ export function Home() {
       {follows.error && <Alert tone="error" title={follows.error} onDismiss={follows.clearError} />}
       {weather.status === "error" && <Alert tone="warning" title="Weather is unavailable right now">Statuses still show, without the thunderstorm check.</Alert>}
 
-      {/* "Find a place" in the hero scrolls here (below the sticky header). */}
-      <div id="places" tabIndex={-1} className="flex scroll-mt-24 flex-col gap-8 outline-none">
+      {/* "Find a place" in the hero scrolls here (below the sticky header).
+          The list opens and closes with "See / Hide the places": the grid row
+          animates between 0 and its full height, and a closed list is inert
+          (not focusable, not read out). */}
+      <div id="places" tabIndex={-1} className="scroll-mt-24 outline-none">
+      <div
+        className={cx(
+          "grid",
+          !instant && "transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none",
+          placesOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+      <div className="min-h-0 overflow-clip [overflow-clip-margin:24px]" inert={!placesOpen}>
+      <div id="places-list" className="flex flex-col gap-8">
       <PlaceFilters filters={filters} onChange={setFilters} shown={visible.length} total={places.length} />
       {!loaded || !statuses ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
@@ -159,6 +206,9 @@ export function Home() {
           </section>
         </>
       )}
+      </div>
+      </div>
+      </div>
       </div>
     </div>
   );

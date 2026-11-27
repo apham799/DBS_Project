@@ -12,7 +12,21 @@ import { buttonClasses } from "@/components/ui";
 // target, so screen reader users land there too. Without JavaScript it's
 // still an ordinary link.
 
-export function ScrollLink({ to, children, size = "lg", className, label }: { to: string; children: ReactNode; size?: "md" | "lg"; className?: string; label?: string }) {
+export function ScrollLink({
+  to,
+  children,
+  size = "lg",
+  className,
+  label,
+  onActivate,
+}: {
+  to: string;
+  children: ReactNode;
+  size?: "md" | "lg";
+  className?: string;
+  label?: string;
+  onActivate?: () => void; // runs first, e.g. to open a collapsed section
+}) {
   return (
     <a
       href={`#${to}`}
@@ -22,10 +36,17 @@ export function ScrollLink({ to, children, size = "lg", className, label }: { to
         const target = document.getElementById(to);
         if (!target) return;
         e.preventDefault();
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-        target.focus({ preventScroll: true });
-        history.replaceState(null, "", `#${to}`);
+        onActivate?.();
+        // Scroll after the next layout: if onActivate opened a collapsed
+        // section, the page has to be long enough to scroll down first.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+            target.focus({ preventScroll: true });
+            history.replaceState(null, "", `#${to}`);
+          }),
+        );
       }}
     >
       {children}
