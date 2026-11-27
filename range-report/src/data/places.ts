@@ -25,15 +25,16 @@ export const places: Place[] = [
       { id: "bunker", kind: "bunker", label: "Practice bunker", outdoor: true },
       { id: "putting", kind: "putting", label: "Putting green", outdoor: true },
     ],
-    // Opens 6 AM; closes around sunset (about 4:30 PM in mid-November).
-    // Weekly maintenance: closes 2 PM Tuesday, opens 10 AM Wednesday.
+    // Opens 6 AM; closes 3:30 PM (golfers' reports, Nov 17: "they close by 3:30",
+    // earlier than the website's "around sunset"). Weekly maintenance: closes
+    // 2 PM Tuesday, opens 10 AM Wednesday.
     hours: [
-      { days: [0, 1, 4, 5, 6], open: "06:00", close: "16:30" },
+      { days: [0, 1, 4, 5, 6], open: "06:00", close: "15:30" },
       { days: [2], open: "06:00", close: "14:00" },
-      { days: [3], open: "10:00", close: "16:30" },
+      { days: [3], open: "10:00", close: "15:30" },
     ],
     hoursNote:
-      "Opens 6 AM, closes around sunset; closes 2 PM Tue for maintenance and opens 10 AM Wed. Projected to close for the season Mon Nov 16, 2026 (mats only if it stays open). Not confirmed when checked.",
+      "Opens 6 AM and closes 3:30 PM, as golfers reported on Nov 17 (the website says around sunset). Closes 2 PM Tue for maintenance and opens 10 AM Wed. Projected to close for the season Mon Nov 16, 2026, but golfers found it open, mats only, after that.",
     seasons: [
       { from: "2026-11-16", to: "2027-04-14", condition: "closed", note: "Projected closed for the season from Nov 16 (mats only if open)" },
       { from: "2026-11-11", to: "2026-11-15", areas: ["range"], condition: "limited", note: "Mats only since Nov 11" },
