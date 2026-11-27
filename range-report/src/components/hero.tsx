@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ButtonLink } from "@/components/ui";
+import { ScrollLink } from "@/components/scroll-link";
 
 // The landing section at the top of Home (from v1 feedback: a calm, larger
 // top section with the tagline instead of a pop-up over a busy page). One
@@ -21,7 +21,7 @@ export function Hero({ live }: { live?: ReactNode }) {
           Live conditions at Chicago practice facilities. Made by golfers, for golfers.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <ButtonLink href="#places" size="lg">Find a place</ButtonLink>
+          <ScrollLink to="places">Find a place</ScrollLink>
           <Link href="/how-it-works" className="rounded-sm px-2 py-3 text-body font-semibold text-green underline decoration-green/40 decoration-2 underline-offset-[3px] hover:decoration-green">
             How it works
           </Link>

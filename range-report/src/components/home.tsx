@@ -83,7 +83,7 @@ export function Home() {
       {weather.status === "error" && <Alert tone="warning" title="Weather is unavailable right now">Statuses still show, without the thunderstorm check.</Alert>}
 
       {/* "Find a place" in the hero scrolls here (below the sticky header). */}
-      <div id="places" className="flex scroll-mt-24 flex-col gap-8">
+      <div id="places" tabIndex={-1} className="flex scroll-mt-24 flex-col gap-8 outline-none">
       {!loaded || !statuses ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
           {places.slice(0, 4).map((p) => (

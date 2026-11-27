@@ -23,6 +23,11 @@ const sizes: Record<Size, string> = {
   lg: "h-14 px-6",
 };
 
+// The same look for things that aren't a <Button> or <ButtonLink> (an <a> with
+// its own click handler, for example).
+export const buttonClasses = ({ variant = "primary", size = "md", block }: { variant?: Variant; size?: Size; block?: boolean } = {}) =>
+  cx(base, variants[variant], sizes[size], block && "w-full");
+
 type ButtonProps = ComponentProps<"button"> & {
   variant?: Variant;
   size?: Size;
