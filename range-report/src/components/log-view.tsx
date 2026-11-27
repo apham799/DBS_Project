@@ -68,6 +68,7 @@ export function LogView() {
 
   const heading = (
     <div className="flex flex-col gap-1">
+      <TextLink href="/" className="mb-2 w-fit">← All places</TextLink>
       <h1 className="text-display">My log</h1>
       <p className="text-body text-muted">Every session you posted, with what you worked on. Only you can see this page.</p>
     </div>
@@ -75,7 +76,7 @@ export function LogView() {
 
   if (state.status === "signed_out") {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {heading}
         <Card tone="cream" className="flex flex-col gap-3">
           <p className="text-body">Sign in to see your practice log.</p>
@@ -87,7 +88,7 @@ export function LogView() {
 
   if (state.status === "loading") {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {heading}
         <div role="status" className="flex flex-col gap-4">
           <span className="sr-only">Loading your log…</span>
@@ -100,7 +101,7 @@ export function LogView() {
 
   if (state.status === "error") {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {heading}
         <Alert tone="error" title="Couldn't load your log" action={<Button size="sm" variant="secondary" onClick={retry}>Try again</Button>}>
           Your notes are saved; this page just couldn&apos;t reach them.
@@ -114,7 +115,7 @@ export function LogView() {
   const places = new Set(entries.map((e) => e.placeId)).size;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       {heading}
       {entries.length === 0 ? (
         <Card tone="cream" className="flex flex-col gap-2">
@@ -127,7 +128,9 @@ export function LogView() {
             {entries.length} {entries.length === 1 ? "session" : "sessions"} at {places} {places === 1 ? "place" : "places"}
             {changed > 0 && ` · Range Report changed ${changed} ${changed === 1 ? "trip" : "trips"}`}
           </p>
-          <ol className="grid items-start gap-4 lg:grid-cols-2">
+          {/* One column, newest first: a log reads top to bottom by time, and
+              two columns of different-height entries left holes beside the short ones. */}
+          <ol className="flex flex-col gap-4">
             {entries.map((e) => <Entry key={e.id} entry={e} />)}
           </ol>
         </>
