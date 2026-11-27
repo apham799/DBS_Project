@@ -39,7 +39,9 @@ const wordFor = (state: AreaStatus["state"], basis: AreaStatus["basis"]) =>
       ? `${stateWord[state].toLowerCase()} · season`
       : basis === "weather"
         ? `${stateWord[state].toLowerCase()} · storm`
-        : stateWord[state].toLowerCase();
+        : basis === "confirmed"
+          ? `${stateWord[state].toLowerCase()} · confirmed`
+          : stateWord[state].toLowerCase();
 
 function look(s: AreaStatus): Look {
   if (s.basis === "hours") {

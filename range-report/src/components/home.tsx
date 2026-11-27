@@ -7,7 +7,8 @@ import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceFilters } from "@/components/place-filters";
 import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
-import { places } from "@/data/places";
+import { places as basePlaces } from "@/data/places";
+import { usePlaceConfig } from "@/lib/use-place-config";
 import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
 import { bySource } from "@/lib/report-source";
 import { counts } from "@/lib/report-visibility";
@@ -100,6 +101,9 @@ export function Home() {
   const source = useReportSource();
   const reports = useMemo(() => bySource(allReports, source).filter(counts), [allReports, source]);
   const weather = useWeather();
+  // The places, with what admins have set (confirmed statuses, hours) merged in.
+  const { withConfig } = usePlaceConfig();
+  const places = useMemo(() => basePlaces.map(withConfig), [withConfig]);
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
   const now = useMemo(() => clock && effectiveNow(clock, reports), [clock, reports]);
@@ -111,7 +115,7 @@ export function Home() {
       Object.fromEntries(
         places.map((p) => [p.id, placeStatus(p, reports, now, weather.status === "ok" ? { stormNow: !!weather.byPlace[p.id]?.stormNow } : null)]),
       ),
-    [reports, now, weather],
+    [places, reports, now, weather],
   );
 
   const [filters, setFilters] = useFilters();

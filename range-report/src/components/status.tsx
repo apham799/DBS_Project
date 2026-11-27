@@ -69,6 +69,7 @@ export function areaStateLabel(s: AreaStatus): string | null {
   if (s.basis === "likely") return `Probably ${stateWord[s.state].toLowerCase()}`;
   if (s.basis === "season") return `${stateWord[s.state]}, by the published season`;
   if (s.basis === "weather") return `${stateWord[s.state]}, thunderstorm nearby`;
+  if (s.basis === "confirmed") return `${stateWord[s.state]}, confirmed by Range Report`;
   return stateWord[s.state];
 }
 
@@ -150,6 +151,7 @@ export function MapKey() {
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />Solid: reported in the last day</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dashed border-ink")} />Dashed: this week, probably still true</li>
           <li className="flex items-center gap-2"><span className={cx(swatch, "border-dotted border-ink")} />Dotted: published season, or the weather</li>
+          <li className="flex items-center gap-2"><span className={cx(swatch, "border-ink")} />&ldquo;Confirmed&rdquo;: set by a Range Report admin from golfers&apos; reports</li>
         </ul>
       </div>
       <p>Tap an area on the map for its reports.</p>
@@ -224,7 +226,7 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
                 {last ? "last: " : ""}
                 {shown.basis === "likely" ? "probably " : ""}
                 {stateWord[shown.state].toLowerCase()}
-                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : ""}
+                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : shown.basis === "confirmed" ? " · confirmed" : ""}
               </span>
             ) : (
               <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>

@@ -44,7 +44,8 @@ export function effectiveNow(now: Date, reports: Report[]): Date {
 }
 
 export type AreaState = "open" | "limited" | "closed";
-export type Basis = "report" | "likely" | "weather" | "season" | "hours";
+// confirmed: a status an admin confirmed from golfers' reports.
+export type Basis = "report" | "likely" | "weather" | "confirmed" | "season" | "hours";
 
 export type AreaStatus = {
   area: Area;
@@ -194,6 +195,15 @@ function areaStatus(
     } else if (age < WINDOWS.problem) {
       return fromReport(stateOf[value], "likely", `Probably still ${conditionWord[value]}: reported ${ago}`);
     }
+  }
+
+  // An admin's confirmed status: below a fresh golfer report (checked above),
+  // above any published season (checked below).
+  const confirmed = (place.confirmed ?? []).find(
+    (c) => (c.areaId === null || c.areaId === area.id) && c.startsOn <= today && (!c.endsOn || today <= c.endsOn),
+  );
+  if (confirmed) {
+    return { ...base, state: confirmed.condition === "open" ? "open" : confirmed.condition, basis: "confirmed", reason: `${confirmed.note} · confirmed by Range Report` };
   }
 
   if (season && !contradicted(season, area, reports)) return { ...base, state: season.condition, basis: "season", reason: season.note };

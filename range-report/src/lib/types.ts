@@ -25,6 +25,18 @@ export type SeasonRule = {
   note: string;
 };
 
+// A status an admin confirmed from golfers' reports (place_rules in the
+// database). Dates are Chicago calendar dates, inclusive; no end = until ended.
+// Without areaId it covers the whole place.
+export type ConfirmedRule = {
+  id: string;
+  areaId: string | null;
+  condition: "open" | "limited" | "closed";
+  note: string;
+  startsOn: string;
+  endsOn: string | null;
+};
+
 export type Place = {
   id: string;
   name: string;
@@ -38,6 +50,8 @@ export type Place = {
   hours: HoursRule[] | "24/7";
   hoursNote: string; // what the published hours were, and when they were checked
   seasons: SeasonRule[];
+  confirmed?: ConfirmedRule[]; // from the database, merged in by the app
+  hoursUpdated?: { note: string | null; updatedAt: string }; // set when an admin replaced the published hours
 };
 
 // What a golfer reports, in three taps.

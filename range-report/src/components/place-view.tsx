@@ -13,6 +13,7 @@ import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
 import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
 import { useReportSource } from "@/lib/use-report-source";
+import { usePlaceConfig } from "@/lib/use-place-config";
 import { useDb } from "@/lib/db";
 import { counts, hiddenLabel, hiddenWhy } from "@/lib/report-visibility";
 import { useVotes } from "@/lib/use-votes";
@@ -181,7 +182,9 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
 }
 
 export function PlaceView({ placeId }: { placeId: string }) {
-  const place = placeById(placeId)!;
+  // The place, with what admins have set (confirmed statuses, hours) merged in.
+  const { withConfig } = usePlaceConfig();
+  const place = useMemo(() => withConfig(placeById(placeId)!), [withConfig, placeId]);
   const { reports: allReports, loaded, error, live, retry, update } = useReports();
   const { db } = useDb();
   // After a vote, read that report again so its counts update even without Realtime.
@@ -374,7 +377,13 @@ export function PlaceView({ placeId }: { placeId: string }) {
 
         <Card tone="cream" as="section" className="flex flex-col gap-2 lg:col-span-5" labelledBy="published">
           <h2 id="published" className="text-heading">Published info</h2>
-          <p className="text-body">{place.hoursNote}</p>
+          {place.hoursUpdated && (
+            <p className="text-body">
+              <span className="font-semibold">Hours updated by Range Report</span> on {new Date(place.hoursUpdated.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" })}
+              {place.hoursUpdated.note ? `: ${place.hoursUpdated.note}` : "."}
+            </p>
+          )}
+          <p className={place.hoursUpdated ? "text-label font-normal text-muted" : "text-body"}>{place.hoursUpdated ? `Published: ${place.hoursNote}` : place.hoursNote}</p>
           {place.seasons.length > 0 && (
             <ul className="list-disc pl-5 text-body">
               {place.seasons.map((s) => <li key={s.from + s.note}>{s.note}</li>)}

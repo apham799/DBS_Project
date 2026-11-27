@@ -169,6 +169,33 @@ describe("seasonal rules", () => {
   });
 });
 
+describe("confirmed statuses (set by an admin)", () => {
+  const tuesday = new Date("2026-11-17T20:00:00Z");
+  const withRule = (c: Partial<NonNullable<Place["confirmed"]>[number]> = {}): Place => ({
+    ...range,
+    seasons: [{ from: "2026-11-01", condition: "closed", note: "Closed for the season" }],
+    confirmed: [{ id: "c1", areaId: "range", condition: "limited", note: "Mats only", startsOn: "2026-11-16", endsOn: null, ...c }],
+  });
+
+  it("rank above a published season", () => {
+    const s = placeStatus(withRule(), [], tuesday);
+    expect(area(s, "range")).toMatchObject({ state: "limited", basis: "confirmed", reason: "Mats only · confirmed by Range Report" });
+    expect(area(s, "putting")).toMatchObject({ state: "closed", basis: "season" }); // only the area it names
+  });
+
+  it("rank below a fresh golfer report", () => {
+    const s = placeStatus(withRule(), [report(ago(HOUR, tuesday), { areas: { range: "good" } })], tuesday);
+    expect(area(s, "range")).toMatchObject({ state: "open", basis: "report" });
+  });
+
+  it("can confirm a place open, covering the whole place, and only between their dates", () => {
+    const open = withRule({ areaId: null, condition: "open", note: "Open, mats only" });
+    expect(placeStatus(open, [], tuesday).areas.every((a) => a.state === "open" && a.basis === "confirmed")).toBe(true);
+    expect(area(placeStatus(withRule({ startsOn: "2026-11-20" }), [], tuesday), "range").basis).toBe("season");
+    expect(area(placeStatus(withRule({ endsOn: "2026-11-16" }), [], tuesday), "range").basis).toBe("season");
+  });
+});
+
 describe("hours and weather come first", () => {
   it("everything is closed outside published hours, whatever the reports say", () => {
     const sat7pm = new Date("2026-11-15T01:00:00Z");
