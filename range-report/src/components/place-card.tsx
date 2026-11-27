@@ -22,8 +22,9 @@ export function FollowButton({ following, name, onToggle }: { following: boolean
         following ? "border-green bg-green text-on-green hover:bg-green-deep" : "border-ink bg-surface text-ink hover:bg-cream",
       )}
     >
+      {/* A bookmark, not a star: stars mean an admin set a status. */}
       <svg viewBox="0 0 16 16" className="size-4" aria-hidden fill={following ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
-        <path d="M8 1.8 L9.9 5.7 L14.2 6.3 L11.1 9.3 L11.8 13.6 L8 11.6 L4.2 13.6 L4.9 9.3 L1.8 6.3 L6.1 5.7 Z" />
+        <path d="M4 2 H12 V14 L8 10.8 L4 14 Z" />
       </svg>
       {following ? "Following" : "Follow"}
     </button>
