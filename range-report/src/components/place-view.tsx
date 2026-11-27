@@ -7,7 +7,7 @@ import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
-import { placeById } from "@/data/places";
+import { placeById, placeKindLabel } from "@/data/places";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
@@ -205,7 +205,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
           <div className="flex flex-col gap-1">
             <h1 className="text-display">{place.name}</h1>
             <p className="text-body text-muted">
-              {place.neighborhood} · {place.kind === "sim" ? "Simulator bays" : "Walk-in range"} · {place.address}
+              {place.neighborhood} · {placeKindLabel(place)} · {place.address}
             </p>
           </div>
           {follows.signedIn && (

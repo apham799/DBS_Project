@@ -102,6 +102,54 @@ export const places: Place[] = [
     seasons: [{ from: "2026-11-01", to: "2027-03-31", areas: ["range"], condition: "limited", note: "Mats only, Nov 1 – Mar 31" }],
   },
   {
+    // Added Nov 27, 2026 (checked that day on dpparks.org/golf-center and /golf-center-hours).
+    id: "golf-center-des-plaines",
+    name: "Golf Center Des Plaines",
+    kind: "walk_in",
+    neighborhood: "Des Plaines",
+    address: "353 N. River Road, Des Plaines, IL 60018",
+    lat: 42.0583,
+    lon: -87.8841,
+    website: "https://www.dpparks.org/golf-center/",
+    areas: [
+      { id: "bays", kind: "bays", label: "Heated stalls", outdoor: true },
+      { id: "range", kind: "range", label: "Grass tees", outdoor: true },
+      { id: "chipping", kind: "chipping", label: "Short game area", outdoor: true },
+      { id: "bunker", kind: "bunker", label: "Practice bunkers", outdoor: true },
+    ],
+    hours: [{ days: DAILY, open: "09:00", close: "22:00" }],
+    hoursNote:
+      "Winter hours (Nov 1 – Feb 28): driving range 9 AM – 10 PM daily, 80 lit, individually heated stations. Short game area 9 AM until 1½ hours before sunset, weather permitting. Grass tees aren't in the winter hours. Dec 24 9 AM – 5 PM, Dec 31 9 AM – 6 PM, closed Dec 25.",
+    seasons: [
+      { from: "2026-11-01", to: "2027-02-28", areas: ["range"], condition: "closed", note: "Grass tees aren't in the published winter hours (Nov 1 – Feb 28)" },
+      { from: "2026-12-25", to: "2026-12-25", condition: "closed", note: "Closed Christmas Day" },
+    ],
+  },
+  {
+    // Added Nov 27, 2026 (checked that day on mistwoodgolfdome.com and /hours).
+    id: "mistwood-golf-dome",
+    name: "Mistwood Golf Dome",
+    kind: "walk_in",
+    neighborhood: "Bolingbrook",
+    address: "730 N Bolingbrook Dr, Bolingbrook, IL 60440",
+    lat: 41.7217,
+    lon: -88.066,
+    website: "https://mistwoodgolfdome.com/",
+    areas: [
+      { id: "bays", kind: "bays", label: "Toptracer bays", outdoor: false },
+      { id: "chipping", kind: "chipping", label: "Short game area", outdoor: false },
+      { id: "putting", kind: "putting", label: "Putting green", outdoor: false },
+    ],
+    hours: [
+      { days: [1, 2, 3, 4, 5], open: "08:00", close: "22:00" },
+      { days: [6], open: "07:00", close: "22:00" },
+      { days: [0], open: "07:00", close: "21:00" },
+    ],
+    hoursNote:
+      "A fully heated indoor dome, open year-round: 30 Toptracer hitting bays (booked by the hour), a 900 sq ft putting green, a short game area and simulator suites. Dec 24 8 AM – 2 PM, Dec 31 8 AM – 6 PM, closed Dec 25.",
+    seasons: [{ from: "2026-12-25", to: "2026-12-25", condition: "closed", note: "Closed Christmas Day" }],
+  },
+  {
     id: "pga-superstore-lincoln-park",
     name: "PGA TOUR Superstore Lincoln Park",
     kind: "sim",
@@ -158,3 +206,8 @@ export const places: Place[] = [
 ];
 
 export const placeById = (id: string) => places.find((p) => p.id === id);
+
+// What kind of place it is, in a few words: simulators, an indoor dome (walk-in,
+// nothing outdoors), or a walk-in range.
+export const placeKindLabel = (p: Place) =>
+  p.kind === "sim" ? "Simulator bays" : p.areas.every((a) => !a.outdoor) ? "Indoor golf dome" : "Walk-in range";

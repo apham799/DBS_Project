@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
+import { placeKindLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
 import type { PlaceWeather } from "@/lib/weather-server";
 
@@ -60,7 +61,7 @@ export function PlaceCard({
             </Link>
           </h3>
           <p className="text-label font-normal text-muted">
-            {place.neighborhood} · {place.kind === "sim" ? "Simulator bays" : "Walk-in range"}
+            {place.neighborhood} · {placeKindLabel(place)}
           </p>
         </div>
         {onToggleFollow && (

@@ -70,7 +70,7 @@ Written Nov 17, 2026, the day v1 shipped. Based on the project proposal's roadma
 **Nov 30: city map, checkpoint, fair prep**
 
 9. **City map** (`/map`).
-   - Leaflet + OpenStreetMap. The seven places as pins colored by their hours badge, with what's usable in the popup and a link to the place.
+   - Leaflet + OpenStreetMap. Every place (nine since Nov 27) as a pin colored by their hours badge, with what's usable in the popup and a link to the place.
    - Uses the same filters as Home.
 10. **Checkpoint #2** with the three golfers, plus the success numbers.
 11. **Fair prep:** a two-minute demo path, the test reports deleted, and the README updated.

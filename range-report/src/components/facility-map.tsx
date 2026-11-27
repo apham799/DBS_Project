@@ -258,6 +258,56 @@ function Sim({ byKind, onSelect }: { byKind: Partial<Record<AreaKind, AreaStatus
   );
 }
 
+// An indoor dome with no outdoor range (Mistwood): the roof, a row of hitting
+// bays along the bottom facing into the dome, and the short game area and
+// putting green under the roof.
+function Dome({ byKind, onSelect }: { byKind: Partial<Record<AreaKind, AreaStatus>>; onSelect: (id: string) => void }) {
+  const { bays, chipping, putting } = byKind;
+  const both = chipping && putting;
+  return (
+    <>
+      {/* The dome's roof line. */}
+      <path d={`M8 ${H - 8} L8 120 Q${W / 2} -30 ${W - 8} 120 L${W - 8} ${H - 8} Z`} className="pointer-events-none fill-cream/50 stroke-rule" strokeWidth={2} />
+      <path d={`M60 ${H - 90} Q${W / 2} 20 ${W - 60} ${H - 90}`} className="pointer-events-none fill-none stroke-ink/10" strokeWidth={1.5} strokeDasharray="6 6" />
+      {chipping && (
+        <Area status={chipping} onSelect={onSelect} label={{ x: both ? 175 : W / 2, y: 152, small: true }}>
+          {(l) => (
+            <>
+              <rect x={both ? 60 : 150} y={112} width={both ? 230 : 300} height={110} rx={26} {...shape(l)} />
+              <ellipse cx={both ? 230 : 390} cy={190} rx={24} ry={13} className="pointer-events-none fill-none stroke-ink/25" strokeWidth={1.5} />
+              <Flag x={both ? 230 : 390} y={190} />
+            </>
+          )}
+        </Area>
+      )}
+      {putting && (
+        <Area status={putting} onSelect={onSelect} label={{ x: both ? 425 : W / 2, y: 162, small: true }}>
+          {(l) => (
+            <>
+              <ellipse cx={both ? 425 : W / 2} cy={167} rx={both ? 115 : 150} ry={52} {...shape(l)} />
+              <circle cx={both ? 360 : 230} cy={185} r={3} className="pointer-events-none fill-ink/40" />
+              <circle cx={both ? 490 : 370} cy={180} r={3} className="pointer-events-none fill-ink/40" />
+            </>
+          )}
+        </Area>
+      )}
+      {bays && (
+        <Area status={bays} onSelect={onSelect} label={{ x: W / 2, y: 252, small: true, inline: true }}>
+          {(l) => (
+            <>
+              <rect x={24} y={236} width={W - 48} height={72} rx={10} {...shape(l)} />
+              {Array.from({ length: 10 }, (_, i) => {
+                const w = (W - 72) / 10;
+                return <rect key={i} x={36 + i * w} y={264} width={w - 8} height={34} rx={4} className="pointer-events-none fill-none stroke-ink/25" strokeWidth={1.5} />;
+              })}
+            </>
+          )}
+        </Area>
+      )}
+    </>
+  );
+}
+
 export function FacilityMap({ place, status, onSelect }: { place: Place; status: PlaceStatus; onSelect: (areaId: string) => void }) {
   // One area per kind is all any place has today; the first one wins if not.
   const byKind: Partial<Record<AreaKind, AreaStatus>> = {};
@@ -271,7 +321,14 @@ export function FacilityMap({ place, status, onSelect }: { place: Place; status:
     <figure className="flex flex-col gap-2">
       {/* A group of buttons, one per area: Tab moves between them, Enter opens one. */}
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full rounded-lg bg-cream/40" role="group" aria-label={`Sketch of ${place.name}. ${summary}.`}>
-        {place.kind === "sim" ? <Sim byKind={byKind} onSelect={onSelect} /> : <WalkIn byKind={byKind} onSelect={onSelect} />}
+        {place.kind === "sim" ? (
+          <Sim byKind={byKind} onSelect={onSelect} />
+        ) : !byKind.range && byKind.bays ? (
+          // A walk-in place with bays but no outdoor range is an indoor dome.
+          <Dome byKind={byKind} onSelect={onSelect} />
+        ) : (
+          <WalkIn byKind={byKind} onSelect={onSelect} />
+        )}
       </svg>
       <figcaption className="text-label font-normal text-muted">Sketch, not to scale.</figcaption>
     </figure>
