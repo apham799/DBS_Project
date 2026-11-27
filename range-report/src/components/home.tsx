@@ -1,7 +1,8 @@
 "use client";
 
 import { Show } from "@clerk/nextjs";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SHOW_PLACES_EVENT } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceFilters } from "@/components/place-filters";
@@ -83,10 +84,10 @@ function usePlacesOpen(): [boolean, (open: boolean) => void] {
     }, 0);
     return () => clearTimeout(t);
   }, []);
-  const set = (next: boolean) => {
+  const set = useCallback((next: boolean) => {
     setState(next);
     localStorage.setItem(PLACES_OPEN_KEY, next ? "1" : "0");
-  };
+  }, []);
   return [open, set];
 }
 
@@ -110,6 +111,27 @@ export function Home() {
   const [filters, setFilters] = useFilters();
   const [placesOpen, setPlacesOpen] = usePlacesOpen();
   const [instant, setInstant] = useState(false);
+
+  // "Places" in the header (or arriving at /#places): open the list instantly
+  // and scroll to it once the page is long enough.
+  useEffect(() => {
+    const show = () => {
+      setInstant(true);
+      setPlacesOpen(true);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          document.getElementById("places")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+        }),
+      );
+    };
+    window.addEventListener(SHOW_PLACES_EVENT, show);
+    const t = window.location.hash === "#places" ? setTimeout(show, 0) : undefined;
+    return () => {
+      window.removeEventListener(SHOW_PLACES_EVENT, show);
+      clearTimeout(t);
+    };
+  }, [setPlacesOpen]);
   const visible = places.filter((p) => matches(p, statuses?.[p.id], filters));
   const mine = visible.filter((p) => follows.following.has(p.id));
   const others = visible.filter((p) => !follows.following.has(p.id));
