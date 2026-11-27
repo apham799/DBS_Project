@@ -69,6 +69,19 @@ export function AdminPanel({
   const [days, setDays] = useState<Day[]>(() => daysFrom(place.hours));
   const [hoursNote, setHoursNote] = useState("");
 
+  // A closed place has no hours to edit: while the form is closing the whole
+  // place, or it's confirmed closed now, the hours step aside (with a way to
+  // set them anyway, for when it reopens). Closing one area leaves them: the
+  // rest of the place is still open.
+  const closingInForm = rule.areaId === null && rule.condition === "closed";
+  const closedNow = confirmed.find((c) => c.areaId === null && c.condition === "closed" && c.startsOn <= today);
+  const [hoursAnyway, setHoursAnyway] = useState(false);
+  const hideHours = (closingInForm || !!closedNow) && !hoursAnyway;
+  const changeRule = (next: SuggestedRule) => {
+    setRule(next);
+    if (next.areaId === null && next.condition === "closed") setHoursAnyway(false);
+  };
+
   async function run(what: string, call: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(true);
     setError(null);
@@ -110,6 +123,7 @@ export function AdminPanel({
       // Fill in the hours form with the closing time golfers mention, for the admin to check.
       setDays((ds) => ds.map((d) => (d.open ? { ...d, to: s.closesAt } : d)));
       setHoursNote(`Golfers report it closes at ${s.closesAt}`);
+      setHoursAnyway(true);
       goTo("admin-hours");
       return;
     }
@@ -219,7 +233,7 @@ export function AdminPanel({
           <div className="grid gap-3 sm:grid-cols-3">
             <label className={label}>
               Area
-              <select className={input} value={rule.areaId ?? ""} onChange={(e) => setRule({ ...rule, areaId: e.target.value || null })}>
+              <select className={input} value={rule.areaId ?? ""} onChange={(e) => changeRule({ ...rule, areaId: e.target.value || null })}>
                 <option value="">Whole place</option>
                 {place.areas.map((a) => (
                   <option key={a.id} value={a.id}>{a.label}</option>
@@ -228,7 +242,7 @@ export function AdminPanel({
             </label>
             <label className={label}>
               Status
-              <select className={input} value={rule.condition} onChange={(e) => setRule({ ...rule, condition: e.target.value as SuggestedRule["condition"] })}>
+              <select className={input} value={rule.condition} onChange={(e) => changeRule({ ...rule, condition: e.target.value as SuggestedRule["condition"] })}>
                 <option value="open">Open / good</option>
                 <option value="limited">Limited</option>
                 <option value="closed">Closed</option>
@@ -251,9 +265,22 @@ export function AdminPanel({
         </form>
 
         {/* 4. Hours */}
+        {hideHours ? (
+          <section className="flex flex-col gap-2 border-t border-brass/40 pt-5" aria-labelledby="admin-hours-off">
+            <h3 id="admin-hours-off" className="text-body font-semibold">Hours</h3>
+            <p className="text-body text-muted">
+              {closingInForm
+                ? "You're marking the whole place closed, so there are no hours to edit. Its hours apply again once the closure ends."
+                : `Confirmed closed: “${closedNow!.note}”${closedNow!.endsOn ? ` until ${closedNow!.endsOn}` : ""}. Its hours apply again once that ends.`}
+            </p>
+            <button type="button" onClick={() => setHoursAnyway(true)} className="w-fit rounded-sm text-label font-semibold text-green underline decoration-green/40 underline-offset-[3px] hover:decoration-green">
+              Set the hours for when it reopens
+            </button>
+          </section>
+        ) : (
         <form
           id="admin-hours"
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-3 border-t border-brass/40 pt-5"
           onSubmit={async (e) => {
             e.preventDefault();
             const hours = rulesFrom(days);
@@ -292,6 +319,7 @@ export function AdminPanel({
             )}
           </div>
         </form>
+        )}
         </div>
       </details>
     </div>
