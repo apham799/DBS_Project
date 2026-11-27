@@ -49,7 +49,7 @@ export function PlaceCard({
   return (
     <li
       className={cx(
-        "relative flex flex-col gap-3 rounded-lg border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
+        "rr-reveal relative flex flex-col gap-3 rounded-lg border bg-surface p-5 shadow-card transition-shadow hover:shadow-lift",
         highlight ? "border-green" : "border-rule",
       )}
     >

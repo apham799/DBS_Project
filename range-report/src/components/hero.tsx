@@ -10,7 +10,9 @@ export function Hero({ live }: { live?: ReactNode }) {
   return (
     <section
       aria-labelledby="hero-title"
-      className="relative grid overflow-hidden rounded-2xl border border-cream-deep bg-cream lg:min-h-[26rem] lg:grid-cols-12"
+      // Fills the first screen (minus the header), leaving the top of the place
+      // list peeking in below so it's clear there's more.
+      className="relative grid min-h-[calc(100svh-10.5rem)] overflow-hidden rounded-2xl border border-cream-deep bg-cream lg:min-h-[max(26rem,calc(100svh-10.5rem))] lg:grid-cols-12"
     >
       <div className="relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-10 lg:col-span-6 lg:p-14">
         <p className="text-label font-semibold uppercase tracking-[0.14em] text-green">Chicago practice spots</p>
@@ -29,9 +31,20 @@ export function Hero({ live }: { live?: ReactNode }) {
         {live}
       </div>
       {/* On wide screens the scene fades in from the left, so there's no hard seam with the text side. */}
-      <div className="relative lg:col-span-6 lg:[mask-image:linear-gradient(to_right,transparent,black_28%)]" aria-hidden>
+      <div className="relative lg:col-span-6 lg:[mask-image:linear-gradient(to_right,transparent,black_18%)]" aria-hidden>
         <GolfScene />
       </div>
+      {/* A small cue that the places are below. */}
+      <ScrollLink
+        to="places"
+        label="Scroll to the places"
+        className="absolute bottom-5 left-14 z-10 hidden items-center gap-1.5 rounded-full px-1 py-1 text-label font-semibold text-green hover:underline lg:flex"
+      >
+        See the places
+        <svg viewBox="0 0 16 16" className="size-4 motion-safe:animate-bounce" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6 L8 10 L12 6" />
+        </svg>
+      </ScrollLink>
     </section>
   );
 }

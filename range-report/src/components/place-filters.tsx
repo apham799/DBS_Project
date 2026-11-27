@@ -50,7 +50,7 @@ export function PlaceFilters({
     onChange({ ...filters, features: filters.features.includes(f) ? filters.features.filter((x) => x !== f) : [...filters.features, f] });
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-rule bg-surface p-4" role="group" aria-label="Filter places">
+    <div className="rr-reveal flex flex-col gap-3 rounded-xl border border-rule bg-surface p-4" role="group" aria-label="Filter places">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
         <span className="text-label font-semibold text-muted lg:w-28 lg:shrink-0">I need</span>
         <div className="flex flex-wrap gap-2">

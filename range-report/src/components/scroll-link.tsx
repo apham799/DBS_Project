@@ -12,11 +12,12 @@ import { buttonClasses } from "@/components/ui";
 // target, so screen reader users land there too. Without JavaScript it's
 // still an ordinary link.
 
-export function ScrollLink({ to, children, size = "lg" }: { to: string; children: ReactNode; size?: "md" | "lg" }) {
+export function ScrollLink({ to, children, size = "lg", className, label }: { to: string; children: ReactNode; size?: "md" | "lg"; className?: string; label?: string }) {
   return (
     <a
       href={`#${to}`}
-      className={buttonClasses({ size })}
+      aria-label={label}
+      className={className ?? buttonClasses({ size })}
       onClick={(e) => {
         const target = document.getElementById(to);
         if (!target) return;
