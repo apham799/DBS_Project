@@ -361,3 +361,56 @@ export function GuestTag() {
     </span>
   );
 }
+
+
+// Up / down votes on a report: real buttons (aria-pressed shows your vote).
+// Guests are asked to sign in; your own reports can't be voted on.
+export function VoteButtons({
+  up,
+  down,
+  mine,
+  myVote,
+  onVote,
+}: {
+  up: number;
+  down: number;
+  mine: boolean;
+  myVote: 0 | 1 | -1;
+  onVote: (v: 1 | -1) => void;
+}) {
+  const base = "inline-flex h-8 items-center gap-1 rounded-md border px-2 text-label font-semibold transition-colors disabled:cursor-default disabled:opacity-60";
+  const arrow = (dir: "up" | "down") => (
+    <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden fill="currentColor">
+      <path d={dir === "up" ? "M8 3 L13.5 10.5 H2.5 Z" : "M8 13 L2.5 5.5 H13.5 Z"} />
+    </svg>
+  );
+  return (
+    <div className="flex items-center gap-1.5" role="group" aria-label="Was this report right?">
+      <button
+        type="button"
+        disabled={mine}
+        aria-pressed={myVote === 1}
+        aria-label={`Vote up (${up})`}
+        title={mine ? "Your report" : "This matches what I found"}
+        onClick={() => onVote(1)}
+        className={cx(base, myVote === 1 ? "border-open bg-open-tint text-open" : "border-rule bg-surface text-muted hover:border-open hover:text-open")}
+      >
+        {arrow("up")}
+        {up}
+      </button>
+      <button
+        type="button"
+        disabled={mine}
+        aria-pressed={myVote === -1}
+        aria-label={`Vote down (${down})`}
+        title={mine ? "Your report" : "This doesn't match what I found"}
+        onClick={() => onVote(-1)}
+        className={cx(base, myVote === -1 ? "border-closed bg-closed-tint text-closed" : "border-rule bg-surface text-muted hover:border-closed hover:text-closed")}
+      >
+        {arrow("down")}
+        {down}
+      </button>
+      {mine && <span className="text-label text-muted">Your report</span>}
+    </div>
+  );
+}

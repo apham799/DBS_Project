@@ -1,18 +1,21 @@
 "use client";
 
 import { Show } from "@clerk/nextjs";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
 import { ReportSourcePicker } from "@/components/place-filters";
 import { askToSignIn } from "@/components/sign-in-prompt";
-import { AreaDetails, crowdWord, GuestTag, HoursBadge, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
+import { AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
 import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
 import { useReportSource } from "@/lib/use-report-source";
+import { useDb } from "@/lib/db";
+import { counts, hiddenLabel, hiddenWhy } from "@/lib/report-visibility";
+import { useVotes } from "@/lib/use-votes";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
@@ -179,10 +182,38 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
 
 export function PlaceView({ placeId }: { placeId: string }) {
   const place = placeById(placeId)!;
-  const { reports: allReports, loaded, error, live, retry } = useReports();
+  const { reports: allReports, loaded, error, live, retry, update } = useReports();
+  const { db } = useDb();
+  // After a vote, read that report again so its counts update even without Realtime.
+  const refetch = useCallback(
+    async (id: string) => {
+      const { data } = await db.from("reports").select("id, place_id, created_at, place_open, areas, crowd, note, source, hidden_at, hidden_reason, up_votes, down_votes").eq("id", id).single();
+      if (data)
+        update({
+          id: data.id,
+          placeId: data.place_id,
+          createdAt: data.created_at,
+          placeOpen: data.place_open,
+          areas: data.areas ?? {},
+          crowd: data.crowd,
+          note: data.note,
+          source: data.source,
+          hiddenAt: data.hidden_at,
+          hiddenReason: data.hidden_reason,
+          upVotes: data.up_votes,
+          downVotes: data.down_votes,
+        });
+    },
+    [db, update],
+  );
+  const votes = useVotes(refetch);
+  const [showHidden, setShowHidden] = useState(false);
   // "Reports from": applied once, here, so the map, summary and list agree.
   const source = useReportSource();
-  const reports = useMemo(() => bySource(allReports, source), [allReports, source]);
+  const sourced = useMemo(() => bySource(allReports, source), [allReports, source]);
+  // Hidden reports (by an admin, or voted down) don't count toward anything;
+  // they're still listed, behind "Show hidden reports".
+  const reports = useMemo(() => sourced.filter(counts), [sourced]);
   const weather = useWeather();
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
@@ -216,8 +247,39 @@ export function PlaceView({ placeId }: { placeId: string }) {
     () => new Map(now ? areaTrends(place, recentReports(place, reports, now)).map((t) => [t.areaId, t]) : []),
     [place, reports, now],
   );
-  const recent = reports.filter((r) => r.placeId === place.id).slice(0, 10);
+  const placeReports = sourced.filter((r) => r.placeId === place.id).slice(0, 15);
+  const recent = placeReports.filter(counts).slice(0, 10);
+  const hiddenOnes = placeReports.filter((r) => !counts(r));
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lon}`;
+
+  // One report in the list (a render function, not a component defined in
+  // here, so React doesn't rebuild every row on each update).
+  const reportItem = (r: Report) => {
+    const why = hiddenWhy(r);
+    return (
+      <li key={r.id} className="flex flex-col gap-2 px-4 py-3">
+        <p className="flex flex-wrap items-center gap-2 text-label text-muted">
+          {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
+          {r.source === "guest" && <GuestTag />}
+        </p>
+        {why && <p className="text-label font-semibold text-muted">{hiddenLabel(why)}</p>}
+        {/* Same chips as the place cards and My Log. */}
+        <ReportChips place={place} report={r} />
+        {r.note && <p className="text-body italic text-ink/80">&ldquo;{r.note}&rdquo;</p>}
+        <VoteButtons
+          up={r.upVotes ?? 0}
+          down={r.downVotes ?? 0}
+          mine={votes.isMine(r.id)}
+          myVote={votes.myVote(r.id)}
+          onVote={(v) =>
+            votes.signedIn
+              ? votes.vote(r.id, v)
+              : askToSignIn({ title: "Vote on reports", reason: "Sign in to vote reports up or down. Votes help everyone see which reports to trust." })
+          }
+        />
+      </li>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -330,20 +392,32 @@ export function PlaceView({ placeId }: { placeId: string }) {
         {loaded && recent.length === 0 && (
           <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
         )}
+        {votes.error && <Alert tone="error" title={votes.error} onDismiss={votes.clearError} />}
         {recent.length > 0 && (
           <ol className="flex flex-col divide-y divide-rule rounded-lg border border-rule">
-            {recent.map((r) => (
-              <li key={r.id} className="flex flex-col gap-2 px-4 py-3">
-                <p className="flex flex-wrap items-center gap-2 text-label text-muted">
-                  {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
-                  {r.source === "guest" && <GuestTag />}
-                </p>
-                {/* Same chips as the place cards and My Log. */}
-                <ReportChips place={place} report={r} />
-                {r.note && <p className="text-body italic text-ink/80">&ldquo;{r.note}&rdquo;</p>}
-              </li>
-            ))}
+            {recent.map(reportItem)}
           </ol>
+        )}
+        {/* Like hidden comments: out of the way, never gone. */}
+        {hiddenOnes.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              aria-expanded={showHidden}
+              onClick={() => setShowHidden(!showHidden)}
+              className="inline-flex w-fit items-center gap-1 rounded-sm text-label font-semibold text-muted hover:text-ink hover:underline"
+            >
+              {showHidden ? "Hide" : "Show"} {hiddenOnes.length} hidden report{hiddenOnes.length === 1 ? "" : "s"}
+              <svg viewBox="0 0 16 16" className={`size-4 transition-transform ${showHidden ? "rotate-180" : ""}`} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6 L8 10 L12 6" />
+              </svg>
+            </button>
+            {showHidden && (
+              <ol className="flex flex-col divide-y divide-rule rounded-lg border border-dashed border-edge/40 bg-cream/40 opacity-90">
+                {hiddenOnes.map(reportItem)}
+              </ol>
+            )}
+          </div>
         )}
       </section>
 

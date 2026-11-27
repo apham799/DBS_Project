@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { placeById } from "@/data/places";
 import { aiSummary, aiSummaryEnabled, MAX_REPORTS, MIN_NOTES, reportsBlock } from "@/lib/ai-summary-server";
 import { bySource, isReportSource } from "@/lib/report-source";
+import { counts } from "@/lib/report-visibility";
 import { SUMMARY_DAYS } from "@/lib/summary";
 import type { Report } from "@/lib/types";
 
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/summary/[id]
   const since = new Date(Date.now() - SUMMARY_DAYS * 86400_000).toISOString();
   const { data, error } = await db
     .from("reports")
-    .select("id, place_id, created_at, place_open, areas, crowd, note, source")
+    .select("id, place_id, created_at, place_open, areas, crowd, note, source, hidden_at, up_votes, down_votes")
     .eq("place_id", place.id)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
@@ -58,8 +59,11 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/summary/[id]
     crowd: r.crowd,
     note: r.note,
     source: r.source,
+    hiddenAt: r.hidden_at,
+    upVotes: r.up_votes,
+    downVotes: r.down_votes,
   }));
-  const reports = bySource(fetched, isReportSource(from) ? from : "everyone");
+  const reports = bySource(fetched, isReportSource(from) ? from : "everyone").filter(counts);
   const notes = reports.filter((r) => r.note).length;
   if (notes < MIN_NOTES) return json({ status: "few_notes", notes });
 

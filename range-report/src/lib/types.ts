@@ -53,4 +53,8 @@ export type Report = {
   crowd: Crowd | null;
   note?: string | null; // public, optional, max 280 characters, no links
   source?: "account" | "guest"; // posted signed in, or as a guest
+  hiddenAt?: string | null; // hidden by an admin (kept, shown only on request)
+  hiddenReason?: string | null;
+  upVotes?: number;
+  downVotes?: number;
 };

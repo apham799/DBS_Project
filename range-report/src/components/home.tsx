@@ -10,6 +10,7 @@ import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
 import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
 import { bySource } from "@/lib/report-source";
+import { counts } from "@/lib/report-visibility";
 import { effectiveNow, placeStatus } from "@/lib/status";
 import { setReportSource, useReportSource } from "@/lib/use-report-source";
 import { useFollows } from "@/lib/use-follows";
@@ -97,7 +98,7 @@ export function Home() {
   const { reports: allReports, loaded, error, live, justAdded, retry } = useReports();
   // "Reports from": applied once, here, so every status below agrees with it.
   const source = useReportSource();
-  const reports = useMemo(() => bySource(allReports, source), [allReports, source]);
+  const reports = useMemo(() => bySource(allReports, source).filter(counts), [allReports, source]);
   const weather = useWeather();
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
