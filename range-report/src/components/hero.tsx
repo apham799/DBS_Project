@@ -18,7 +18,7 @@ export function Hero({ live }: { live?: ReactNode }) {
           Know what&apos;s open before you drive.
         </h1>
         <p className="max-w-md text-lg leading-relaxed text-muted">
-          Golfers who were just there say whether the driving range, short game area and putting green are usable, and how busy it is.
+          Live conditions at Chicago practice facilities. Made by golfers, for golfers.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <ButtonLink href="#places" size="lg">Find a place</ButtonLink>
