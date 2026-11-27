@@ -12,7 +12,7 @@ Built for Design, Build, Ship (MPCS 51238), Autumn 2026. Focus: **systems**.
 - **Facility heat map:** each place's areas are drawn as a sketch (not to scale), filled by status and outlined by how sure we are. Tap or press Enter on an area for its latest rating and 30-day counts.
 - **Post a report** in three taps, plus an optional public note (280 characters, no links) and private notes for your log.
 - **What golfers say:** a rule-based summary of the last 30 days (area ratings, closed visits, when it's packed), and an AI-written paragraph once a place has 3 public notes.
-- **My log:** your own sessions, notes and whether Range Report changed the trip.
+- **My Log:** your own sessions, notes and whether Range Report changed the trip.
 - **Live:** new reports appear on every open page without a reload.
 
 ## How status works (`src/lib/status.ts`)

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { Alert, Button, ButtonLink, Card, Skeleton, TextLink } from "@/components/ui";
-import { placeById } from "@/data/places";
-import { reportLine } from "@/lib/summary";
+import { ReportChips, SettingBadge } from "@/components/status";
+import { placeById, placeKindLabel } from "@/data/places";
+import { settingOf } from "@/lib/filters";
 import { useLog, type Changed, type LogEntry } from "@/lib/use-log";
 
-// "My log": every session you posted, newest first. The private note is the
+// "My Log": every session you posted, newest first. The private note is the
 // reason to post at all, so this is where it pays off. Only you see this page's
 // contents; the shared parts are marked as shared.
 
@@ -25,14 +26,23 @@ function Entry({ entry }: { entry: LogEntry }) {
   return (
     <li>
       <Card as="article" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="text-heading">
-            {place ? (
-              <Link href={`/places/${place.id}`} className="rounded-sm hover:underline">{place.name}</Link>
-            ) : (
-              entry.placeId
+        {/* Same header as the place cards on Home: name, indoor/outdoor, where and what. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 className="text-heading">
+              {place ? (
+                <Link href={`/places/${place.id}`} className="rounded-sm hover:underline">{place.name}</Link>
+              ) : (
+                entry.placeId
+              )}
+            </h2>
+            {place && (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-normal text-muted">
+                <SettingBadge setting={settingOf(place)} />
+                <span>{place.neighborhood} · {placeKindLabel(place)}</span>
+              </p>
             )}
-          </h2>
+          </div>
           <p className="text-label font-normal text-muted">{when.format(new Date(entry.createdAt))}</p>
         </div>
 
@@ -46,9 +56,9 @@ function Entry({ entry }: { entry: LogEntry }) {
         )}
 
         {entry.report && place && (
-          <div className="flex flex-col gap-0.5 border-t border-rule pt-3">
+          <div className="flex flex-col gap-2 border-t border-rule pt-3">
             <p className="text-label text-muted">What you reported · shared without your name</p>
-            <p className="text-body">{reportLine(place, entry.report)}</p>
+            <ReportChips place={place} report={entry.report} mine />
             {entry.report.note && <p className="text-body italic text-ink/80">&ldquo;{entry.report.note}&rdquo;</p>}
           </div>
         )}
@@ -69,7 +79,7 @@ export function LogView() {
   const heading = (
     <div className="flex flex-col gap-1">
       <TextLink href="/" className="mb-2 w-fit">← All places</TextLink>
-      <h1 className="text-display">My log</h1>
+      <h1 className="text-display">My Log</h1>
       <p className="text-body text-muted">Every session you posted, with what you worked on. Only you can see this page.</p>
     </div>
   );

@@ -28,7 +28,7 @@ export function Header() {
           </Show>
           <Show when="signed-in">
             <ButtonLink href="/log" variant="ghost" size="sm">
-              My log
+              My Log
             </ButtonLink>
             {/* Inside the signed-in check: outside it, the browser drew its
                 container while the server drew nothing (a hydration mismatch). */}

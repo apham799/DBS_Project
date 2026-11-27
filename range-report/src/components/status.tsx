@@ -5,7 +5,8 @@ import { cx } from "@/components/ui";
 import type { HoursNow } from "@/lib/hours";
 import { ageLabel, type AreaState, type AreaStatus, type PlaceStatus } from "@/lib/status";
 import type { AreaTrend } from "@/lib/summary";
-import type { Condition } from "@/lib/types";
+import { crowdWord } from "@/lib/summary";
+import type { Condition, Place, Report } from "@/lib/types";
 
 // How each area's status looks. Color, an icon and a word always go together.
 // The border says how sure we are:
@@ -23,7 +24,7 @@ const stateTone: Record<AreaState, string> = {
 };
 
 // Shared with the summary (lib/summary.ts), so a crowd reads the same everywhere.
-export { crowdWord } from "@/lib/summary";
+export { crowdWord };
 
 export function StateIcon({ state, className = "size-4" }: { state: AreaState; className?: string }) {
   return (
@@ -308,5 +309,42 @@ export function SettingBadge({ setting }: { setting: "indoor" | "outdoor" }) {
       </svg>
       {setting === "outdoor" ? "Outdoor" : "Indoor"}
     </span>
+  );
+}
+
+// One report as chips, in the same style as the place cards' area chips: each
+// area it rated in its color, icon and word, then how busy it was. A "closed
+// when I got there" report is a single gray chip.
+export function ReportChips({ place, report, mine }: { place: Place; report: Report; mine?: boolean }) {
+  const chip = "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-label";
+  if (!report.placeOpen) {
+    return (
+      <span className={cx(chip, "w-fit", stateTone.closed)}>
+        <StateIcon state="closed" className="size-3.5" />
+        <span className="font-semibold">Closed when {mine ? "you" : "they"} got there</span>
+      </span>
+    );
+  }
+  const rated = place.areas.filter((a) => report.areas[a.id]);
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="What was reported">
+      {rated.map((a) => {
+        const c = report.areas[a.id];
+        const state = conditionState[c];
+        return (
+          <li key={a.id} className={cx(chip, stateTone[state])}>
+            <StateIcon state={state} className="size-3.5" />
+            <span className="text-ink">{a.label}</span>
+            <span className="font-semibold">{conditionLabel[c].toLowerCase()}</span>
+          </li>
+        );
+      })}
+      {report.crowd && (
+        <li className="inline-flex items-center rounded-full border border-brass/50 bg-cream px-2.5 py-1 text-label font-semibold text-ink">
+          {crowdWord[report.crowd]}
+        </li>
+      )}
+      {rated.length === 0 && !report.crowd && <li className="text-label text-muted">Open, no details</li>}
+    </ul>
   );
 }
