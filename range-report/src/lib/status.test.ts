@@ -141,6 +141,28 @@ describe("seasonal rules", () => {
     expect(area(placeStatus(seasonal, [sunday], new Date("2026-11-16T15:00:00Z")), "chipping")).toMatchObject({ basis: "season" });
   });
 
+  it("stop counting once a golfer found it open after it started, even after that report expires", () => {
+    // Harborside: a projected whole-place closure from Nov 16, but golfers found it open (mats only) on Nov 17.
+    const harborside: Place = { ...range, seasons: [{ from: "2026-11-16", condition: "closed", note: "Projected closed for the season" }] };
+    const nov17 = report(new Date("2026-11-17T18:00:00Z"), { areas: { range: "limited" } });
+    const nov27 = new Date("2026-11-27T20:00:00Z"); // ten days later: the report itself has expired
+    const s = placeStatus(harborside, [nov17], nov27);
+    expect(area(s, "range")).toMatchObject({ state: "open", basis: "hours" });
+    expect(area(s, "putting")).toMatchObject({ state: "open", basis: "hours" }); // whole-place closure: every area
+    expect(area(s, "range").reason).toContain("Golfers found it open after the published");
+    // With no such report, the published closure still stands.
+    expect(area(placeStatus(harborside, [], nov27), "range")).toMatchObject({ state: "closed", basis: "season" });
+    // "Closed when I got there" doesn't contradict a closure.
+    expect(area(placeStatus(harborside, [report(new Date("2026-11-17T18:00:00Z"), { placeOpen: false })], nov27), "range").basis).toBe("season");
+  });
+
+  it("for 'limited' seasons, only a 'good' rating contradicts them", () => {
+    const mats: Place = { ...range, seasons: [{ from: "2026-11-01", areas: ["range"], condition: "limited", note: "Mats only" }] };
+    const later = new Date("2026-11-27T20:00:00Z");
+    expect(area(placeStatus(mats, [report(new Date("2026-11-10T18:00:00Z"), { areas: { range: "limited" } })], later), "range").basis).toBe("season");
+    expect(area(placeStatus(mats, [report(new Date("2026-11-10T18:00:00Z"), { areas: { range: "good" } })], later), "range")).toMatchObject({ state: "open", basis: "hours" });
+  });
+
   it("are overridden by a golfer who was there after it started", () => {
     const s = placeStatus(seasonal, [report(ago(HOUR, tuesday), { areas: { chipping: "limited" } })], tuesday);
     expect(area(s, "chipping")).toMatchObject({ state: "limited", basis: "report" });

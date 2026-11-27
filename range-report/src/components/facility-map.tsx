@@ -30,8 +30,16 @@ const tones = {
   closed: { fill: "fill-closed-tint", stroke: "stroke-closed", text: "fill-closed" },
 };
 const dashFor = (basis: AreaStatus["basis"]) => (basis === "likely" ? "10 6" : basis === "season" || basis === "weather" ? "2 5" : undefined);
+// Says where a status comes from when it isn't a fresh report, so a published
+// season ("closed · season") can't be mistaken for what a golfer saw.
 const wordFor = (state: AreaStatus["state"], basis: AreaStatus["basis"]) =>
-  basis === "likely" ? `probably ${stateWord[state].toLowerCase()}` : stateWord[state].toLowerCase();
+  basis === "likely"
+    ? `probably ${stateWord[state].toLowerCase()}`
+    : basis === "season"
+      ? `${stateWord[state].toLowerCase()} · season`
+      : basis === "weather"
+        ? `${stateWord[state].toLowerCase()} · storm`
+        : stateWord[state].toLowerCase();
 
 function look(s: AreaStatus): Look {
   if (s.basis === "hours") {

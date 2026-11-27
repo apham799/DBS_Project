@@ -66,7 +66,10 @@ const stateText: Record<AreaState, string> = { open: "text-open", limited: "text
 // "Open", "Probably limited", or null when nothing is known beyond the hours.
 export function areaStateLabel(s: AreaStatus): string | null {
   if (s.basis === "hours") return null;
-  return s.basis === "likely" ? `Probably ${stateWord[s.state].toLowerCase()}` : stateWord[s.state];
+  if (s.basis === "likely") return `Probably ${stateWord[s.state].toLowerCase()}`;
+  if (s.basis === "season") return `${stateWord[s.state]}, by the published season`;
+  if (s.basis === "weather") return `${stateWord[s.state]}, thunderstorm nearby`;
+  return stateWord[s.state];
 }
 
 export function AreaDetails({ status, trend, now }: { status: AreaStatus; trend?: AreaTrend; now: Date }) {
@@ -221,6 +224,7 @@ export function AreaDots({ status }: { status: PlaceStatus }) {
                 {last ? "last: " : ""}
                 {shown.basis === "likely" ? "probably " : ""}
                 {stateWord[shown.state].toLowerCase()}
+                {shown.basis === "season" ? " · season" : shown.basis === "weather" ? " · storm" : ""}
               </span>
             ) : (
               <span className="sr-only">: no reports, {stateWord[a.state].toLowerCase()} by its hours</span>

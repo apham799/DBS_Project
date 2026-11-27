@@ -86,6 +86,21 @@ function activeSeason(place: Place, areaId: string, dateKey: string): SeasonRule
   );
 }
 
+// A golfer who found it working after a season began shows the published rule
+// is wrong (Harborside's "projected" Nov 16 closure, reported open on Nov 17).
+// From then on the rule is ignored, even once that report is too old to show:
+// "a golfer's report always beats published info". A closure of the whole
+// place is contradicted by any open report; a closure of one area by that area
+// rated good or limited; a "limited" season (mats only) only by "good".
+function contradicted(season: SeasonRule, area: Area, reports: Report[]): boolean {
+  return reports.some((r) => {
+    if (!r.placeOpen || chicagoParts(new Date(r.createdAt)).dateKey < season.from) return false;
+    const rating = r.areas[area.id];
+    if (season.condition === "limited") return rating === "good";
+    return season.areas ? rating === "good" || rating === "limited" : true;
+  });
+}
+
 // What a report says about one area, or undefined if it says nothing.
 // The "golf day" a moment belongs to: the Chicago date, rolling over at 4 AM
 // rather than midnight, so a "closed for a private event" report at 11:30 PM
@@ -181,7 +196,11 @@ function areaStatus(
     }
   }
 
-  if (season) return { ...base, state: season.condition, basis: "season", reason: season.note };
+  if (season && !contradicted(season, area, reports)) return { ...base, state: season.condition, basis: "season", reason: season.note };
+  if (season) {
+    const last = lastReport(reports, area, now);
+    return { ...base, state: "open", basis: "hours", reason: `Golfers found it open after the published "${season.note}"${last ? ` · ${last.toLowerCase()}` : ""}` };
+  }
 
   return { ...base, state: "open", basis: "hours", reason: lastReport(reports, area, now) };
 }
