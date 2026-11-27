@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon } from "@/components/status";
+import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon, SettingBadge } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
 import { placeKindLabel } from "@/data/places";
+import { settingOf } from "@/lib/filters";
 import type { Place } from "@/lib/types";
 import type { PlaceWeather } from "@/lib/weather-server";
 
@@ -60,8 +61,9 @@ export function PlaceCard({
               {place.name}
             </Link>
           </h3>
-          <p className="text-label font-normal text-muted">
-            {place.neighborhood} · {placeKindLabel(place)}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-normal text-muted">
+            <SettingBadge setting={settingOf(place)} />
+            <span>{place.neighborhood} · {placeKindLabel(place)}</span>
           </p>
         </div>
         {onToggleFollow && (

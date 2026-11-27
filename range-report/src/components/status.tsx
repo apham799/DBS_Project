@@ -290,3 +290,23 @@ export function Progress({ have, need, label }: { have: number; need: number; la
     </p>
   );
 }
+
+// Indoor or outdoor, at a glance: its own neutral style and icons (a sun, a
+// roof), so it never reads as a status color.
+export function SettingBadge({ setting }: { setting: "indoor" | "outdoor" }) {
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ink/20 bg-surface px-2.5 py-0.5 text-label font-semibold text-ink">
+      <svg viewBox="0 0 16 16" className="size-3.5 shrink-0" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        {setting === "outdoor" ? (
+          <>
+            <circle cx="8" cy="8" r="3" />
+            <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+          </>
+        ) : (
+          <path d="M2 7.5 8 2.5l6 5M3.5 6.5V13.5h9V6.5" />
+        )}
+      </svg>
+      {setting === "outdoor" ? "Outdoor" : "Indoor"}
+    </span>
+  );
+}

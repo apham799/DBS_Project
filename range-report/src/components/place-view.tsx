@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress } from "@/components/status";
+import { AreaDetails, crowdWord, HoursBadge, MapKey, NoDataIcon, Progress, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
+import { settingOf } from "@/lib/filters";
 import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/status";
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, reportLine, summarizeReports, summaryLines } from "@/lib/summary";
 import type { Place, Report } from "@/lib/types";
@@ -204,8 +205,9 @@ export function PlaceView({ placeId }: { placeId: string }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-display">{place.name}</h1>
-            <p className="text-body text-muted">
-              {place.neighborhood} · {placeKindLabel(place)} · {place.address}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-muted">
+              <SettingBadge setting={settingOf(place)} />
+              <span>{place.neighborhood} · {placeKindLabel(place)} · {place.address}</span>
             </p>
           </div>
           {follows.signedIn && (

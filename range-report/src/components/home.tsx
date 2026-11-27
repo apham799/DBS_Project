@@ -1,11 +1,13 @@
 "use client";
 
 import { Show } from "@clerk/nextjs";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
+import { PlaceFilters } from "@/components/place-filters";
 import { Alert, Button, Skeleton, TextLink } from "@/components/ui";
 import { places } from "@/data/places";
+import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
 import { effectiveNow, placeStatus } from "@/lib/status";
 import { useFollows } from "@/lib/use-follows";
 import { useReports, type LiveStatus } from "@/lib/use-reports";
@@ -37,6 +39,37 @@ export function LiveDot({ live, compact }: { live: LiveStatus; compact?: boolean
   );
 }
 
+// Filters last for the browser tab (sessionStorage), so they survive opening a
+// place and coming back. Read after mount, so the server render and the first
+// browser render agree.
+const FILTERS_KEY = "range-report:filters";
+const KNOWN = new Set(FEATURES.map((f) => f.id));
+
+function useFilters(): [Filters, (f: Filters) => void] {
+  const [filters, setState] = useState<Filters>(NO_FILTERS);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(FILTERS_KEY) ?? "null") as Partial<Filters> | null;
+        if (!saved) return;
+        setState({
+          features: (saved.features ?? []).filter((f): f is Feature => KNOWN.has(f as Feature)),
+          setting: saved.setting === "indoor" || saved.setting === "outdoor" ? saved.setting : null,
+          openNow: saved.openNow === true,
+        });
+      } catch {
+        // A bad saved value just means no filters.
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const set = (f: Filters) => {
+    setState(f);
+    sessionStorage.setItem(FILTERS_KEY, JSON.stringify(f));
+  };
+  return [filters, set];
+}
+
 export function Home() {
   const { reports, loaded, error, live, justAdded, retry } = useReports();
   const weather = useWeather();
@@ -54,8 +87,10 @@ export function Home() {
     [reports, now, weather],
   );
 
-  const mine = places.filter((p) => follows.following.has(p.id));
-  const others = places.filter((p) => !follows.following.has(p.id));
+  const [filters, setFilters] = useFilters();
+  const visible = places.filter((p) => matches(p, statuses?.[p.id], filters));
+  const mine = visible.filter((p) => follows.following.has(p.id));
+  const others = visible.filter((p) => !follows.following.has(p.id));
 
   const card = (p: (typeof places)[number]) => statuses && now && (
     <PlaceCard
@@ -84,6 +119,7 @@ export function Home() {
 
       {/* "Find a place" in the hero scrolls here (below the sticky header). */}
       <div id="places" tabIndex={-1} className="flex scroll-mt-24 flex-col gap-8 outline-none">
+      <PlaceFilters filters={filters} onChange={setFilters} shown={visible.length} total={places.length} />
       {!loaded || !statuses ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading places">
           {places.slice(0, 4).map((p) => (
@@ -112,7 +148,14 @@ export function Home() {
                 </p>
               </Show>
             </div>
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
+            {visible.length === 0 ? (
+              <div className="flex flex-col items-start gap-2 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 p-5">
+                <p className="text-body">No places match all of those.</p>
+                <Button size="sm" variant="secondary" onClick={() => setFilters(NO_FILTERS)}>Clear filters</Button>
+              </div>
+            ) : (
+              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
+            )}
           </section>
         </>
       )}
