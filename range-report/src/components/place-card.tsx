@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useId, useState } from "react";
 import { AreaDots, crowdWord, headline, HoursBadge, NoDataIcon, SettingBadge } from "@/components/status";
 import { Badge, cx } from "@/components/ui";
 import { ageLabel, type PlaceStatus } from "@/lib/status";
@@ -46,6 +47,8 @@ export function PlaceCard({
   onToggleFollow?: () => void;
   highlight?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const detailsId = useId();
   return (
     <li
       className={cx(
@@ -73,27 +76,50 @@ export function PlaceCard({
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <HoursBadge hours={status.hours} />
-        {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
-      </div>
-      <AreaDots status={status} />
+      {/* Always shown: whether it's open. */}
+      <HoursBadge hours={status.hours} />
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-label font-normal text-muted">
+      {/* Everything else opens on demand, so the list stays easy to scan.
+          The button sits above the card's link (z-10), like Follow. */}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        onClick={() => setOpen(!open)}
+        className="relative z-10 inline-flex w-fit items-center gap-1 rounded-sm text-label font-semibold text-green hover:underline"
+      >
+        {open ? "Hide details" : "Details"}
+        <svg viewBox="0 0 16 16" className={cx("size-4 transition-transform duration-200", open && "rotate-180")} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6 L8 10 L12 6" />
+        </svg>
+      </button>
+
+      <div id={detailsId} hidden={!open} className="flex flex-col gap-3 border-t border-rule pt-3">
+        {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
+        <AreaDots status={status} />
         {status.crowd && <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>}
-        {status.lastReportAt ? (
-          <span>Last report {ageLabel(now.getTime() - new Date(status.lastReportAt).getTime())}</span>
-        ) : (
-          <span className="inline-flex items-center gap-1">
-            <NoDataIcon className="size-4" />
-            No reports yet
-          </span>
-        )}
-        {weather && (
-          <span>
-            {weather.tempF}°F · {weather.label}
-          </span>
-        )}
+        {/* Two labeled lines: a golfer's report and the weather are different things. */}
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-label">
+          <dt className="font-semibold text-muted">Golfer report</dt>
+          <dd className="text-ink">
+            {status.lastReportAt ? (
+              ageLabel(now.getTime() - new Date(status.lastReportAt).getTime())
+            ) : (
+              <span className="inline-flex items-center gap-1 text-muted">
+                <NoDataIcon className="size-4" />
+                None yet
+              </span>
+            )}
+          </dd>
+          {weather && (
+            <>
+              <dt className="font-semibold text-muted">Weather now</dt>
+              <dd className="text-ink">
+                {weather.tempF}°F, {weather.label.toLowerCase()}
+              </dd>
+            </>
+          )}
+        </dl>
       </div>
     </li>
   );

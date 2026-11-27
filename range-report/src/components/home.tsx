@@ -180,7 +180,7 @@ export function Home() {
           {mine.length > 0 && (
             <section className="flex flex-col gap-4" aria-labelledby="mine">
               <h2 id="mine" className="text-heading">Your places</h2>
-              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{mine.map(card)}</ul>
+              <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{mine.map(card)}</ul>
             </section>
           )}
           <section className="flex flex-col gap-4" aria-labelledby="all">
@@ -201,7 +201,7 @@ export function Home() {
                 <Button size="sm" variant="secondary" onClick={() => setFilters(NO_FILTERS)}>Clear filters</Button>
               </div>
             ) : (
-              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
+              <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{others.map(card)}</ul>
             )}
           </section>
         </>
