@@ -28,7 +28,7 @@ Written Nov 17, 2026, the day v1 shipped. Based on the project proposal's roadma
 **Nov 27: the front door**
 
 1. **Landing section instead of the pop-up.**
-   - A tall, calm top section with the tagline ("Know what's open before you drive"), one sentence and a golf illustration (drawn in SVG, so there's no photo licensing).
+   - A tall, calm top section with the tagline ("Get the read before you drive", a nod to a caddy's read), one sentence and a golf illustration (drawn in SVG, so there's no photo licensing).
    - "Find a place" scrolls to the list.
    - The welcome pop-up is removed. Its content becomes a **How it works** page.
 2. **Navigation.**

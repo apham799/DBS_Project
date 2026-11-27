@@ -34,7 +34,7 @@ export function Hero({
       <div className="relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-10 lg:col-span-6 lg:p-14">
         <p className="text-label font-semibold uppercase tracking-[0.14em] text-green">Chicago practice spots</p>
         <h1 id="hero-title" className="font-display text-[2.6rem] font-semibold leading-[1.05] text-ink sm:text-6xl">
-          Know what&apos;s open before you drive.
+          Get the read before you drive.
         </h1>
         <p className="max-w-md text-lg leading-relaxed text-muted">
           Live conditions at Chicago practice facilities. Made by golfers, for golfers.
