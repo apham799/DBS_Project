@@ -85,6 +85,22 @@ Guest posting, the clearer cards and the patterns job stay.
 
 **Moved after the fair:** edit/update past reports (design below), the practice plan, the simulator form, the Playwright two-user test, the weather worker, real facility layouts.
 
+### Added Nov 27–28 (user's call: everything before the fair)
+
+**Done:**
+- Steps 1–5 above.
+- Practice filters (step 7).
+- Plus admins, votes and suggestions:
+  - **Admins:** a private list in the database (the user's account, plus Test Admin on the `testing` branch). Every admin action is a function that checks `is_admin()` itself.
+  - **Confirmed statuses:** an admin turns what golfers keep reporting into a standing status, ranked above published seasons and below fresh reports.
+  - **Admin hours:** they replace a place's published hours.
+  - **Hiding:** an admin can hide an abusive report, which is kept, with a reason.
+  - **Votes:** up or down, one per golfer, never on your own report. Down by 2+ more than up means the report stops counting.
+  - **"Show N hidden reports":** like hidden comments, it reveals reports hidden by votes or by an admin.
+  - **Suggestions for admins:** golfers agree on something not yet confirmed; a published season golfers contradict; a confirmed status recent reports disagree with; notes mentioning a different closing time.
+
+**Still to do:** the patterns job, the city map, checkpoint #2, fair prep.
+
 ---
 
 # Original plan (Nov 17), kept for reference
