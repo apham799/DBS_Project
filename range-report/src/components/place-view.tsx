@@ -6,7 +6,8 @@ import { LiveDot } from "@/components/home";
 import { AdminPanel } from "@/components/admin-panel";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { Chip, ReportSourcePicker } from "@/components/place-filters";
+import { ReportSourcePicker } from "@/components/place-filters";
+import { RangeMenu } from "@/components/range-menu";
 import { askToSignIn } from "@/components/sign-in-prompt";
 import { AdminStar, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
@@ -28,7 +29,7 @@ import { useAiSummary } from "@/lib/use-ai-summary";
 import { usePlacePatterns } from "@/lib/use-place-patterns";
 import { useFollows } from "@/lib/use-follows";
 import { toReport, useReports, type ReportRow } from "@/lib/use-reports";
-import { countLabel, emptyLabel, inRange, needsOlder, REPORT_RANGES, type ReportRange } from "@/lib/report-range";
+import { countLabel, emptyLabel, inRange, needsOlder, type ReportRange } from "@/lib/report-range";
 import { useOlderReports } from "@/lib/use-older-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
 
@@ -509,13 +510,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
               </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Reports from how long ago">
-            {REPORT_RANGES.map((r) => (
-              <Chip key={r.id} on={range === r.id} onClick={() => setRange(r.id)}>
-                {r.label}
-              </Chip>
-            ))}
-          </div>
+          <RangeMenu value={range} onChange={setRange} />
         </div>
         {listLoading && loaded && (
           <div role="status" className="flex flex-col gap-2">

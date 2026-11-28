@@ -7,7 +7,7 @@ export type ReportRange = "week" | "month" | "year" | "all";
 
 export const REPORT_RANGES: { id: ReportRange; label: string }[] = [
   { id: "week", label: "Past week" },
-  { id: "month", label: "30 days" },
+  { id: "month", label: "Last 30 days" },
   { id: "year", label: "Past year" },
   { id: "all", label: "All time" },
 ];
