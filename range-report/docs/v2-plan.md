@@ -100,7 +100,10 @@ Guest posting, the clearer cards and the patterns job stay.
   - **Suggestions for admins:** golfers agree on something not yet confirmed; a published season golfers contradict; a confirmed status recent reports disagree with; notes mentioning a different closing time.
   - **Admin page (`/admin`):** every place's suggestions in one list, behind an Admin tab only admins see (with the count). Confirm and End work there; Edit first and hours open the place's admin boxes.
 
-**Still to do:** the patterns job, the city map, checkpoint #2, fair prep.
+- **Patterns job (Nov 27):** `place_patterns`, rebuilt nightly by pg_cron (10:10 UTC, 4:10 AM Chicago) from all report history: crowd by weekday and part of the day, each area's usual rating by month (3+ reports, 60%+ agreeing; hidden reports left out). Place pages show a Patterns block under What golfers say; admins can rebuild from the Admin page. Checked against fixtures in `supabase/tests/place_patterns.sql` (rolled back).
+  - Not done: moving the AI summary into the table. The summary route would need either a server-only secret key or a public write function anyone could call, so it stays cached per server instance (fine at this scale).
+
+**Still to do:** the city map, checkpoint #2, fair prep.
 
 ---
 
