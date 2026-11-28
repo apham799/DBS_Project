@@ -103,7 +103,9 @@ Guest posting, the clearer cards and the patterns job stay.
 - **Patterns job (Nov 27):** `place_patterns`, rebuilt nightly by pg_cron (10:10 UTC, 4:10 AM Chicago) from all report history: crowd by weekday and part of the day, each area's usual rating by month (3+ reports, 60%+ agreeing; hidden reports left out). Place pages show a Patterns block under What golfers say; admins can rebuild from the Admin page. Checked against fixtures in `supabase/tests/place_patterns.sql` (rolled back).
   - Not done: moving the AI summary into the table. The summary route would need either a server-only secret key or a public write function anyone could call, so it stays cached per server instance (fine at this scale).
 
-**Still to do:** the city map, checkpoint #2, fair prep.
+- **City map (Nov 27):** `/map` (and a Map link in the menu). Leaflet + OpenStreetMap tiles, no key. A pin per place colored like its hours badge, the same filters as Home (shared, so a filter set on one holds on the other), a list beside the map, and a card for the picked place with what's usable, the last report, and links to the place and directions. Picking zooms in so the Lincoln Park pins spread apart; Show all zooms back out. Statuses come from the same hook as Home (`usePlaceStatuses`), so a pin and a card never disagree.
+
+**Still to do:** checkpoint #2, fair prep.
 
 ---
 

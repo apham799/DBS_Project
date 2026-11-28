@@ -232,3 +232,9 @@
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: none; }
 }
+
+/* City map pins (Leaflet divIcons): just the SVG, no default white box. */
+.rr-pin {
+  background: none;
+  border: none;
+}

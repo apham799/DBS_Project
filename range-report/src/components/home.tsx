@@ -7,17 +7,13 @@ import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceFilters } from "@/components/place-filters";
 import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
-import { places as basePlaces } from "@/data/places";
-import { usePlaceConfig } from "@/lib/use-place-config";
-import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib/filters";
-import { bySource } from "@/lib/report-source";
-import { counts } from "@/lib/report-visibility";
-import { effectiveNow, placeStatus } from "@/lib/status";
+import { matches, NO_FILTERS } from "@/lib/filters";
 import { recentReports } from "@/lib/summary";
-import { setReportSource, useReportSource } from "@/lib/use-report-source";
+import { setReportSource } from "@/lib/use-report-source";
+import { useFilters } from "@/lib/use-filters";
 import { useFollows } from "@/lib/use-follows";
-import { useReports, type LiveStatus } from "@/lib/use-reports";
-import { useNow, useWeather } from "@/lib/use-weather";
+import { usePlaceStatuses } from "@/lib/use-place-statuses";
+import type { LiveStatus } from "@/lib/use-reports";
 
 // Whether new reports are arriving on their own. `compact` is the small pill
 // that sits right after a heading ("Right now · Live"); the full sentence is
@@ -43,37 +39,6 @@ export function LiveDot({ live, compact }: { live: LiveStatus; compact?: boolean
       {live === "live" ? "Live: new reports appear on their own" : live === "connecting" ? "Connecting…" : "Reconnecting… reports may be out of date"}
     </p>
   );
-}
-
-// Filters last for the browser tab (sessionStorage), so they survive opening a
-// place and coming back. Read after mount, so the server render and the first
-// browser render agree.
-const FILTERS_KEY = "range-report:filters";
-const KNOWN = new Set(FEATURES.map((f) => f.id));
-
-function useFilters(): [Filters, (f: Filters) => void] {
-  const [filters, setState] = useState<Filters>(NO_FILTERS);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        const saved = JSON.parse(sessionStorage.getItem(FILTERS_KEY) ?? "null") as Partial<Filters> | null;
-        if (!saved) return;
-        setState({
-          features: (saved.features ?? []).filter((f): f is Feature => KNOWN.has(f as Feature)),
-          setting: saved.setting === "indoor" || saved.setting === "outdoor" ? saved.setting : null,
-          openNow: saved.openNow === true,
-        });
-      } catch {
-        // A bad saved value just means no filters.
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, []);
-  const set = (f: Filters) => {
-    setState(f);
-    sessionStorage.setItem(FILTERS_KEY, JSON.stringify(f));
-  };
-  return [filters, set];
 }
 
 // Whether the place list under the banner is open. First-time visitors start
@@ -123,27 +88,8 @@ const COLUMNS = "grid-cols-[repeat(auto-fill,minmax(min(28rem,100%),1fr))]";
 const GRID = `grid ${COLUMNS} gap-x-4`;
 
 export function Home() {
-  const { reports: allReports, loaded, error, live, justAdded, retry } = useReports();
-  // "Reports from": applied once, here, so every status below agrees with it.
-  const source = useReportSource();
-  const reports = useMemo(() => bySource(allReports, source).filter(counts), [allReports, source]);
-  const weather = useWeather();
-  // The places, with what admins have set (confirmed statuses, hours) merged in.
-  const { withConfig } = usePlaceConfig();
-  const places = useMemo(() => basePlaces.map(withConfig), [withConfig]);
-  const clock = useNow();
-  // Never behind the newest report (a slow device clock would hide it).
-  const now = useMemo(() => clock && effectiveNow(clock, reports), [clock, reports]);
+  const { places, statuses, reports, now, weather, loaded, error, live, justAdded, retry } = usePlaceStatuses();
   const follows = useFollows();
-
-  const statuses = useMemo(
-    () =>
-      now &&
-      Object.fromEntries(
-        places.map((p) => [p.id, placeStatus(p, reports, now, weather.status === "ok" ? { stormNow: !!weather.byPlace[p.id]?.stormNow } : null)]),
-      ),
-    [places, reports, now, weather],
-  );
 
   const [filters, setFilters] = useFilters();
   const [placesOpen, setPlacesOpen] = usePlacesOpen();

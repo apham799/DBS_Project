@@ -4,7 +4,7 @@
 // so a server-rendered header would keep showing "Sign in" after signing in.
 //
 // Navigation (from v1 feedback: "some kind of menu or navigation that lets the
-// user click around"): Places, How it works and, signed in, My Log. On wide
+// user click around"): Places, Map, How it works and, signed in, My Log. On wide
 // screens they sit in the bar (plus Admin, for admins); on phones they fold into a Menu button, which
 // also stops "Sign up" running off the screen. The current page is marked
 // (aria-current) and underlined.
@@ -22,6 +22,7 @@ export const SHOW_PLACES_EVENT = "range-report:show-places";
 type NavItem = { href: string; label: string; current: (path: string) => boolean; signedIn?: boolean };
 const NAV: NavItem[] = [
   { href: "/#places", label: "Places", current: (p) => p === "/" || p.startsWith("/places") },
+  { href: "/map", label: "Map", current: (p) => p === "/map" },
   { href: "/how-it-works", label: "How it works", current: (p) => p === "/how-it-works" },
   { href: "/log", label: "My Log", current: (p) => p === "/log", signedIn: true },
 ];
