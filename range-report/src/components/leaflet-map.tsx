@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import type { DivIcon, Map as LMap, Marker } from "leaflet";
 import { useEffect, useRef, useState } from "react";
 import { hoursTone, type HoursTone } from "@/components/status";
+import { cx } from "@/components/ui";
 import type { PlaceStatus } from "@/lib/status";
 import type { Place } from "@/lib/types";
 
@@ -48,6 +49,9 @@ export function LeafletMap({
   const markers = useRef(new Map<string, Marker>());
   const icon = useRef<((color: string, selected: boolean) => DivIcon) | null>(null);
   const [ready, setReady] = useState(false);
+  // The zoom hint, and the key it names ("Ctrl", or "⌘" on a Mac).
+  const [hint, setHint] = useState(false);
+  const [hintKey, setHintKey] = useState("Ctrl");
   const select = useRef(onSelect);
   useEffect(() => {
     select.current = onSelect;
@@ -60,7 +64,9 @@ export function LeafletMap({
     const pins = markers.current;
     import("leaflet").then(({ default: L }) => {
       if (cancelled || !box.current) return;
-      created = L.map(box.current, { scrollWheelZoom: false, zoomControl: true });
+      // Plain scrolling scrolls the page; Ctrl/⌘ + scroll zooms (below).
+      // zoomSnap 0.25 so a trackpad pinch zooms smoothly, not in big jumps.
+      created = L.map(box.current, { scrollWheelZoom: false, zoomControl: true, zoomSnap: 0.25 });
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -128,5 +134,63 @@ export function LeafletMap({
     });
   }, [ready, fitAll, places]);
 
-  return <div ref={box} className="h-full w-full" aria-label="Map of the places" role="region" />;
+  // Ctrl (⌘ on a Mac) + scroll zooms around the pointer, like most map sites;
+  // a trackpad pinch arrives as the same thing. Plain scrolling is left to the
+  // page, with a short hint over the map. Dragging moves the map (Leaflet's own).
+  useEffect(() => {
+    const el = box.current;
+    const m = map.current;
+    if (!ready || !el || !m) return;
+    const key = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
+    let pending = 0;
+    let frame = 0;
+    let at: MouseEvent | null = null;
+    let hide: ReturnType<typeof setTimeout> | undefined;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) {
+        setHintKey(key);
+        setHint(true);
+        clearTimeout(hide);
+        hide = setTimeout(() => setHint(false), 1200);
+        return;
+      }
+      e.preventDefault();
+      setHint(false);
+      // One mouse-wheel notch (about 100) is one zoom level; pinches add up in small steps.
+      pending += -(e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY) / 100;
+      at = e;
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (Math.abs(pending) < 0.25 || !at) return;
+          const step = Math.round(pending * 4) / 4;
+          pending -= step;
+          const zoom = Math.min(m.getMaxZoom(), Math.max(m.getMinZoom(), m.getZoom() + step));
+          m.setZoomAround(m.mouseEventToLatLng(at), zoom, { animate: false });
+        });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      cancelAnimationFrame(frame);
+      clearTimeout(hide);
+    };
+  }, [ready]);
+
+  return (
+    <>
+      <div ref={box} className="h-full w-full" aria-label="Map of the places" role="region" />
+      <div
+        aria-hidden
+        className={cx(
+          "pointer-events-none absolute inset-0 z-[600] flex items-center justify-center bg-ink/35 transition-opacity duration-300",
+          hint ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <p className="rounded-md bg-ink/80 px-4 py-2 text-body font-semibold text-on-green">
+          Hold {hintKey} and scroll to zoom
+        </p>
+      </div>
+    </>
+  );
 }

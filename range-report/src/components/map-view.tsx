@@ -54,8 +54,9 @@ export function MapView() {
       <PlaceFilters filters={filters} onChange={setFilters} shown={shown.length} total={places.length} />
 
       <div className="grid gap-6 lg:grid-cols-12">
+        <div className="flex flex-col gap-2 lg:col-span-8">
         {/* isolate: Leaflet's layers stack inside here, under the sticky header. */}
-        <div ref={mapBox} className="relative isolate h-[60vh] min-h-[420px] overflow-hidden rounded-xl border border-rule shadow-card lg:col-span-8 lg:h-[70vh]">
+        <div ref={mapBox} className="relative isolate h-[60vh] min-h-[420px] overflow-hidden rounded-xl border border-rule shadow-card lg:h-[70vh]">
           <LeafletMap places={places} statuses={statuses} visible={visible} selected={picked?.id ?? null} onSelect={setSelected} fitAll={fitAll} />
           {/* Beside the zoom buttons. */}
           <button
@@ -72,6 +73,9 @@ export function MapView() {
           {picked && statuses && now && (
             <PlacePopup place={picked} status={statuses[picked.id]} now={now} onClose={() => setSelected(null)} />
           )}
+        </div>
+
+        <p className="text-label font-normal text-muted">Drag to move around. Hold Ctrl (⌘ on a Mac) and scroll, or pinch, to zoom; or use + and −.</p>
         </div>
 
         <section aria-labelledby="map-list" className="flex flex-col gap-3 lg:col-span-4">
