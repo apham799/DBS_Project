@@ -15,6 +15,7 @@ Built for Design, Build, Ship (MPCS 51238), Autumn 2026. Focus: **systems**. The
 - **Post a report** in three taps, plus an optional public note (280 characters, no links) and private notes for your log. **No account needed:** guests can post too, marked "Guest".
 - **What golfers say:** a rule-based summary of the last 30 days, an AI-written paragraph once a place has 3 public notes, and **Patterns** from all of a place's history ("usually quiet on Tuesday mornings", "range usually limited in November"), rebuilt every night.
 - **Recent reports**, by past week, last 30 days, past year or all time. Golfers vote reports up or down; a report voted down by 2 more than up is hidden, like a hidden comment (still one click away).
+- **Request a place** that isn't listed (outside Chicago, say): name, town, a pin on the map (search the address or click), what it has and its hours. You can use it right away, but **only you can see it, post there and read its reports** until an admin approves it; then it's a place for everyone.
 - **My Log:** your own sessions, notes and whether Range Report changed the trip.
 - **Live:** new reports, votes and admin changes appear on every open page without a reload.
 
@@ -24,6 +25,7 @@ Some accounts are admins (the `private.admins` table; add one with an `insert` i
 
 - **Suggestions** worked out from golfers' reports (`src/lib/suggestions.ts`): golfers agree on an area that nothing confirms yet; a published season golfers contradict; a confirmed status recent reports disagree with; notes mentioning a different closing time. The app only suggests; an admin confirms, edits or dismisses.
 - **Confirm a status** for an area or the whole place, with a note shown to golfers and optional dates. On the map, an area an admin set is lined with small stars; a whole place set by an admin gets one frame of stars around the map.
+- **Place requests:** approve one (it becomes a place for everyone) or not (it stays private to the golfer who asked, with the admin's note).
 - **Edit the hours** day by day (replacing the published ones until reset), **hide** a report with a reason, and **rebuild the patterns** now.
 
 Every admin action is checked again in the database (`public.is_admin()`), whatever the app shows.
@@ -59,6 +61,7 @@ Ratings that disagree within 3 hours are flagged "reports differ". Times are Ame
 - **Guest limits without tracking people:** a guest's device is a salted SHA-256 hash of its IP (from Cloudflare's `cf-connecting-ip`), kept in a private schema the API can't reach and deleted after a day. One guest report per place every 10 minutes and 10 a day per device, and at most 6 guest reports per place per hour overall.
 - **Votes** go through `vote_report()` only (one per golfer per report, never on your own); the counts on a report are written by the database, not the browser.
 - **Admin changes** (`admin_set_rule`, `admin_set_hours`, `admin_hide_report`, `admin_rebuild_patterns`, …) are security-definer functions that check the admin list first. Nobody can update or delete a report through the API; hidden reports are kept.
+- **Requested places** (`added_places`) are private until approved, enforced in the database: reports are readable only at places you can see (`place_visible()`), and a trigger refuses a report at a place you can't see, whichever function posts it. Admins can read a request to review it, but not its reports. Who asked is never readable through the API (column grants). Patterns leave private places out. Checked in [`supabase/tests/added_places.sql`](supabase/tests/added_places.sql).
 - Column-level grants mean nobody can backdate a report or file one under someone else.
 - These rules were tested on the live database by impersonating golfers, a guest and an admin inside transactions that roll back. The patterns job has its own check: [`supabase/tests/place_patterns.sql`](supabase/tests/place_patterns.sql).
 

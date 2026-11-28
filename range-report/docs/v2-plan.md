@@ -105,7 +105,10 @@ Guest posting, the clearer cards and the patterns job stay.
 
 - **City map (Nov 27):** `/map` (and a Map link in the menu). Leaflet + OpenStreetMap tiles, no key. A pin per place colored like its hours badge, the same filters as Home (shared, so a filter set on one holds on the other), a list beside the map, and a card for the picked place with what's usable, the last report, and links to the place and directions. Picking zooms in so the Lincoln Park pins spread apart; Show all zooms back out. Statuses come from the same hook as Home (`usePlaceStatuses`), so a pin and a card never disagree.
 
-**Still to do:** checkpoint #2, fair prep.
+- **Request a place (Nov 27):** signed-in golfers ask for a missing place (a form with a map pin, kind, areas, hours); it's usable at once but private to them (place, reports, patterns) until an admin approves it on the Admin page. Not added: it stays private to them with the admin's note. Built-in places stay in `src/data/places.ts`; requested ones live in `added_places`.
+  - Known limits: requested places assume Chicago time for their hours, have no weather check, and use the request's simple hours (same every day) until an admin edits them.
+
+**Still to do:** checkpoint #2, fair prep (demo path and README done; deleting test data is on hold).
 
 ---
 
