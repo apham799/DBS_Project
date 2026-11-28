@@ -35,6 +35,7 @@ export function PlaceCard({
   place,
   status,
   weather,
+  reportCount,
   now,
   following,
   onToggleFollow,
@@ -43,6 +44,7 @@ export function PlaceCard({
   place: Place;
   status: PlaceStatus;
   weather?: PlaceWeather;
+  reportCount: number; // reports that count in the last 30 days, as "Reports from" says
   now: Date;
   following: boolean;
   onToggleFollow?: () => void;
@@ -140,7 +142,7 @@ export function PlaceCard({
         {headline(status) && <p className="text-body font-semibold">{headline(status)}</p>}
         <AreaDots status={status} />
         {status.crowd && <Badge tone="brass">{crowdWord[status.crowd.level]} · {status.crowd.age}</Badge>}
-        {/* Two labeled lines: a golfer's report and the weather are different things. */}
+        {/* Labeled lines: a golfer's report and the weather are different things. */}
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-label">
           <dt className="font-semibold text-muted">Golfer report</dt>
           <dd className="text-ink">
@@ -152,6 +154,10 @@ export function PlaceCard({
                 None yet
               </span>
             )}
+          </dd>
+          <dt className="font-semibold text-muted">Reports</dt>
+          <dd className={reportCount ? "text-ink" : "text-muted"}>
+            {reportCount ? `${reportCount} in the last 30 days` : "None in the last 30 days"}
           </dd>
           {weather && (
             <>

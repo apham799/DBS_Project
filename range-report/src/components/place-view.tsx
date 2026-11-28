@@ -481,7 +481,15 @@ export function PlaceView({ placeId }: { placeId: string }) {
       </div>
 
       <section className="flex flex-col gap-3" aria-labelledby="recent">
-        <h2 id="recent" className="text-heading">Recent reports</h2>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="recent" className="text-heading">Recent reports</h2>
+          {/* The same reports as the map and summary: last 30 days, as "Reports from" says, hidden ones left out. */}
+          {loaded && recent30.length > 0 && (
+            <p className="text-body text-muted">
+              {recent30.length} in the last 30 days{recent30.length > recent.length ? `, newest ${recent.length} shown` : ""}
+            </p>
+          )}
+        </div>
         {loaded && recent.length === 0 && (
           <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
         )}

@@ -13,6 +13,7 @@ import { FEATURES, matches, NO_FILTERS, type Feature, type Filters } from "@/lib
 import { bySource } from "@/lib/report-source";
 import { counts } from "@/lib/report-visibility";
 import { effectiveNow, placeStatus } from "@/lib/status";
+import { recentReports } from "@/lib/summary";
 import { setReportSource, useReportSource } from "@/lib/use-report-source";
 import { useFollows } from "@/lib/use-follows";
 import { useReports, type LiveStatus } from "@/lib/use-reports";
@@ -177,12 +178,19 @@ export function Home() {
   const foldable = follows.signedIn && hasSaved;
   const othersShown = !foldable || othersOpen;
 
+  // Reports per place in the last 30 days (the same ones the statuses use).
+  const reportCounts = useMemo(
+    () => (now ? Object.fromEntries(places.map((p) => [p.id, recentReports(p, reports, now).length])) : {}),
+    [places, reports, now],
+  );
+
   const card = (p: (typeof places)[number]) => statuses && now && (
     <PlaceCard
       key={p.id}
       place={p}
       status={statuses[p.id]}
       weather={weather.status === "ok" ? weather.byPlace[p.id] : undefined}
+      reportCount={reportCounts[p.id] ?? 0}
       now={now}
       following={follows.following.has(p.id)}
       onToggleFollow={() => follows.toggle(p.id, p.name)}
