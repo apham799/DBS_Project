@@ -23,7 +23,9 @@ import { ageLabel, effectiveNow, placeStatus, type AreaStatus } from "@/lib/stat
 import { areaTrends, type AreaTrend, MIN_NOTES, MIN_REPORTS, recentReports, summarizeReports, summaryLines } from "@/lib/summary";
 import { chicagoParts } from "@/lib/chicago-time";
 import type { ConfirmedRule, Place, Report } from "@/lib/types";
+import { patternLines, patternsFooter } from "@/lib/patterns";
 import { useAiSummary } from "@/lib/use-ai-summary";
+import { usePlacePatterns } from "@/lib/use-place-patterns";
 import { useFollows } from "@/lib/use-follows";
 import { useReports } from "@/lib/use-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
@@ -128,6 +130,31 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
 // Before that, it's a different-looking card on purpose (dashed, no shadow,
 // its own icon, no status colors, since those all mean a condition): how
 // many more reports are needed, and a button to post one.
+// What the nightly patterns job found in all of this place's reports (the
+// lines above only see the last 30 days). Shown once the job has run here.
+function Patterns({ place, now }: { place: Place; now: Date }) {
+  const patterns = usePlacePatterns(place.id);
+  if (!patterns) return null;
+  const lines = patternLines(patterns, place, now);
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-rule pt-3">
+      <h3 className="text-body font-semibold">Patterns</h3>
+      {lines.length > 0 ? (
+        <ul className="flex list-disc flex-col gap-1 pl-5 text-body">
+          {lines.map((l) => (
+            <li key={l.text}>
+              {l.text} <span className="text-label font-normal text-muted">· {l.basis}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-body text-muted">No clear patterns yet: each one needs at least 3 reports that agree.</p>
+      )}
+      <p className="text-label font-normal text-muted">{patternsFooter(patterns)}</p>
+    </div>
+  );
+}
+
 function SummaryCard({ place, reports, now, source }: { place: Place; reports: Report[]; now: Date; source: ReportSource }) {
   const recent = useMemo(() => recentReports(place, reports, now), [place, reports, now]);
   const summary = useMemo(() => summarizeReports(place, reports, now), [place, reports, now]);
@@ -147,6 +174,7 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
         <p className="text-body text-muted">
           {more === MIN_REPORTS ? "After a couple of reports" : "After one more report"}, this shows which areas are usually open and when it&apos;s packed.
         </p>
+        <Patterns place={place} now={now} />
         <div>
           <PostButton placeId={place.id} size="sm" label={more === MIN_REPORTS ? "Post the first report" : "Post a report"} />
         </div>
@@ -175,6 +203,7 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
       <ul className="flex list-disc flex-col gap-1 pl-5 text-body">
         {summaryLines(summary).map((l) => <li key={l}>{l}</li>)}
       </ul>
+      <Patterns place={place} now={now} />
       {ai.status === "few_notes" && (
         <Progress
           have={ai.notes}

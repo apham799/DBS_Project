@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SuggestionCard } from "@/components/suggestion-card";
-import { Alert, ButtonLink, Card, Skeleton, TextLink } from "@/components/ui";
+import { Alert, Button, ButtonLink, Card, Skeleton, TextLink } from "@/components/ui";
 import { placeKindLabel } from "@/data/places";
 import { chicagoParts } from "@/lib/chicago-time";
 import { useDb } from "@/lib/db";
@@ -45,7 +45,69 @@ export function AdminView() {
         <TextLink href="/" className="w-fit">Back to the places</TextLink>
       </Card>,
     );
-  return shell(<AllSuggestions />);
+  return shell(
+    <>
+      <PatternsJob />
+      <AllSuggestions />
+    </>,
+  );
+}
+
+// The nightly patterns job (pg_cron, 4:10 AM Chicago): when it last ran,
+// and a way to run it now, e.g. after a busy afternoon of reports.
+function PatternsJob() {
+  const { db } = useDb();
+  const [last, setLast] = useState<{ at: string | null; places: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  const load = useCallback(async () => {
+    const { data } = await db.from("place_patterns").select("computed_at");
+    const rows = (data ?? []) as { computed_at: string }[];
+    setLast({ at: rows.map((r) => r.computed_at).sort().at(-1) ?? null, places: rows.length });
+  }, [db]);
+  useEffect(() => {
+    const t = setTimeout(load, 0);
+    return () => clearTimeout(t);
+  }, [load]);
+
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
+
+  return (
+    <Card tone="cream" as="section" className="flex flex-col gap-2" labelledBy="patterns-job">
+      <h2 id="patterns-job" className="text-heading">Patterns</h2>
+      <p className="text-body text-muted">
+        Rebuilt every night at 4:10 AM from all report history; place pages show them under What golfers say.
+        {last && (last.at ? ` Last run ${when(last.at)}, ${last.places} place${last.places === 1 ? "" : "s"} with reports.` : " Not run yet.")}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setMessage(null);
+            const { data, error } = await db.rpc("admin_rebuild_patterns");
+            setBusy(false);
+            if (error) setMessage({ tone: "error", text: `Couldn't rebuild: ${error.message}` });
+            else {
+              setMessage({ tone: "ok", text: `Rebuilt for ${data} place${data === 1 ? "" : "s"}.` });
+              load();
+            }
+          }}
+        >
+          {busy ? "Rebuilding…" : "Rebuild now"}
+        </Button>
+        {message && (
+          <p role="status" className={message.tone === "ok" ? "text-label font-semibold text-open" : "text-label font-semibold text-error"}>
+            {message.text}
+          </p>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 function AllSuggestions() {
