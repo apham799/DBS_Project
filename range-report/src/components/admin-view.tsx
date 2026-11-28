@@ -11,6 +11,9 @@ import type { Suggestion } from "@/lib/suggestions";
 import type { Place } from "@/lib/types";
 import { useAdminCheck } from "@/lib/use-is-admin";
 import { useAllSuggestions } from "@/lib/use-all-suggestions";
+import { usePlaceRequests } from "@/lib/use-place-requests";
+import type { AddedPlaceRow } from "@/lib/added-places";
+import { clockLabel, toMinutes } from "@/lib/chicago-time";
 
 // The Admin page: every place's suggestions from golfers' reports in one list,
 // so an admin doesn't have to open each place to find them. Confirm and End
@@ -47,9 +50,81 @@ export function AdminView() {
     );
   return shell(
     <>
+      <PlaceRequests />
       <PatternsJob />
       <AllSuggestions />
     </>,
+  );
+}
+
+// Places golfers asked for. Approve: a place for everyone. Not now: it stays
+// private to the golfer who asked, with your note. (Their reports there are
+// private until it's approved, so they aren't shown here.)
+function PlaceRequests() {
+  const { db } = useDb();
+  const { requests, loaded, reload } = usePlaceRequests();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function decide(r: AddedPlaceRow, approve: boolean) {
+    const note = approve ? null : window.prompt(`Why not add ${r.name}? The golfer who asked will see this.`, "We couldn't find it");
+    if (!approve && note === null) return;
+    setBusy(r.id);
+    setMessage(null);
+    const { error } = await db.rpc("admin_decide_place", { p_id: r.id, p_approve: approve, p_note: note });
+    setBusy(null);
+    if (error) setMessage({ tone: "error", text: `Couldn't ${approve ? "approve" : "decline"} it: ${error.message}` });
+    else {
+      setMessage({ tone: "ok", text: approve ? `${r.name} is now a place for everyone.` : `${r.name} stays private to the golfer who asked.` });
+      reload();
+    }
+  }
+
+  const hours = (r: AddedPlaceRow) =>
+    r.hours === "24/7" ? "Open 24/7" : r.hours.map((h) => `${clockLabel(toMinutes(h.open))} – ${clockLabel(toMinutes(h.close))} daily`).join("; ");
+
+  return (
+    <section aria-labelledby="place-requests" className="flex flex-col gap-3 rounded-xl border-2 border-dashed border-brass bg-cream/50 p-5">
+      <h2 id="place-requests" className="text-heading">Place requests</h2>
+      {message && (
+        <p role="status" className={message.tone === "ok" ? "text-label font-semibold text-open" : "text-label font-semibold text-error"}>{message.text}</p>
+      )}
+      {!loaded ? (
+        <Skeleton className="h-20 w-full" />
+      ) : requests.length === 0 ? (
+        <p className="text-body text-muted">No places waiting. Golfers can ask for one from the bottom of the place list.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {requests.map((r) => (
+            <li key={r.id} className="flex flex-col gap-2 rounded-lg border border-rule bg-surface p-4">
+              <p className="font-display text-body font-semibold text-ink">{r.name}</p>
+              <p className="text-label font-normal text-muted">
+                {[r.neighborhood, r.kind === "sim" ? "Simulator bays" : r.areas.every((a) => !a.outdoor) ? "Indoor golf dome" : "Walk-in range", r.address].filter(Boolean).join(" · ")}
+              </p>
+              <p className="text-label text-ink">
+                {r.areas.map((a) => a.label).join(", ")} · {hours(r)}
+                {r.hours_note ? ` · “${r.hours_note}”` : ""}
+              </p>
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-label">
+                <a href={`https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lon}#map=17/${r.lat}/${r.lon}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-green underline decoration-green/40">
+                  See it on the map
+                </a>
+                {r.website && (
+                  <a href={r.website} target="_blank" rel="noopener noreferrer nofollow" className="font-semibold text-green underline decoration-green/40">
+                    Their website
+                  </a>
+                )}
+                <span className="text-muted">Asked {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" })}</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" disabled={busy !== null} onClick={() => decide(r, true)}>Approve</Button>
+                <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => decide(r, false)}>Not now</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

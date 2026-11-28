@@ -48,6 +48,7 @@ export function LeafletMap({
   const map = useRef<LMap | null>(null);
   const markers = useRef(new Map<string, Marker>());
   const icon = useRef<((color: string, selected: boolean) => DivIcon) | null>(null);
+  const newMarker = useRef<((lat: number, lon: number, name: string) => Marker) | null>(null);
   const [ready, setReady] = useState(false);
   // The zoom hint, and the key it names ("Ctrl", or "⌘" on a Mac).
   const [hint, setHint] = useState(false);
@@ -74,11 +75,8 @@ export function LeafletMap({
       created.fitBounds(L.latLngBounds(places.map((p) => [p.lat, p.lon])), { padding: [40, 40] });
       icon.current = (color, sel) =>
         L.divIcon({ html: pinHtml(color, sel), className: "rr-pin", iconSize: sel ? [38, 50] : [30, 40], iconAnchor: sel ? [19, 50] : [15, 40] });
-      for (const p of places) {
-        const m = L.marker([p.lat, p.lon], { icon: icon.current(PIN.unknown, false), title: p.name, alt: p.name, keyboard: true, riseOnHover: true });
-        m.on("click", () => select.current(p.id));
-        pins.set(p.id, m);
-      }
+      // Pins themselves are made below, as places arrive (requested ones load later).
+      newMarker.current = (lat, lon, name) => L.marker([lat, lon], { icon: icon.current!(PIN.unknown, false), title: name, alt: name, keyboard: true, riseOnHover: true });
       map.current = created;
       setReady(true);
     });
@@ -88,15 +86,27 @@ export function LeafletMap({
       map.current = null;
       pins.clear();
     };
-    // The places never change while the page is open.
+    // Made once; the first fit uses the places known then (the built-in ones at least).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pins: color by status, only the places the filters keep, the selected one bigger and on top.
   useEffect(() => {
-    if (!ready || !map.current || !icon.current) return;
+    if (!ready || !map.current || !icon.current || !newMarker.current) return;
+    // Places that went away (a request you can no longer see): drop their pins.
+    for (const [id, m] of markers.current) {
+      if (!places.some((p) => p.id === id)) {
+        m.remove();
+        markers.current.delete(id);
+      }
+    }
     for (const p of places) {
-      const m = markers.current.get(p.id)!;
+      let m = markers.current.get(p.id);
+      if (!m) {
+        m = newMarker.current(p.lat, p.lon, p.name);
+        m.on("click", () => select.current(p.id));
+        markers.current.set(p.id, m);
+      }
       const s = statuses?.[p.id];
       const sel = p.id === selected;
       m.setIcon(icon.current(s ? PIN[hoursTone(s.hours)] : PIN.unknown, sel));

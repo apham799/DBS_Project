@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { LeafletMap } from "@/components/leaflet-map";
 import { PlaceFilters } from "@/components/place-filters";
+import { RequestPlaceLink } from "@/components/request-place-link";
 import { AreaDots, headline, HoursBadge, NoDataIcon, SettingBadge } from "@/components/status";
 import { Alert, Button, ButtonLink, cx, Skeleton, TextLink } from "@/components/ui";
 import { placeKindLabel } from "@/data/places";
@@ -115,6 +116,7 @@ export function MapView() {
               ))}
             </ul>
           )}
+          <RequestPlaceLink />
         </section>
       </div>
     </div>

@@ -31,6 +31,19 @@ export function FollowButton({ following, name, onToggle }: { following: boolean
   );
 }
 
+// On a place you asked for that isn't public yet: only you can see it.
+export function PrivateTag({ status }: { status: "pending" | "rejected" }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-edge/50 bg-cream/60 px-2 py-0.5 text-label font-semibold text-muted">
+      <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3.5" y="7" width="9" height="6.5" rx="1.2" />
+        <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" />
+      </svg>
+      {status === "pending" ? "Only you · waiting for review" : "Only you · not added"}
+    </span>
+  );
+}
+
 export function PlaceCard({
   place,
   status,
@@ -98,6 +111,7 @@ export function PlaceCard({
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-normal text-muted">
             <SettingBadge setting={settingOf(place)} />
             <span>{place.neighborhood} · {placeKindLabel(place)}</span>
+            {place.added && place.added.status !== "approved" && <PrivateTag status={place.added.status} />}
           </p>
         </div>
         {onToggleFollow && (

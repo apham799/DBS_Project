@@ -6,6 +6,8 @@ import { SHOW_PLACES_EVENT } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceFilters } from "@/components/place-filters";
+import { RequestPlaceLink } from "@/components/request-place-link";
+import { isPrivate } from "@/lib/added-places";
 import { Alert, Button, cx, Skeleton, TextLink } from "@/components/ui";
 import { matches, NO_FILTERS } from "@/lib/filters";
 import { recentReports } from "@/lib/summary";
@@ -117,9 +119,11 @@ export function Home() {
     };
   }, [setPlacesOpen]);
   const visible = places.filter((p) => matches(p, statuses?.[p.id], filters));
-  const mine = visible.filter((p) => follows.following.has(p.id));
-  const others = visible.filter((p) => !follows.following.has(p.id));
-  const hasSaved = follows.following.size > 0;
+  // Yours: the places you follow, and places you asked for that only you can see yet.
+  const isMine = (p: (typeof places)[number]) => follows.following.has(p.id) || isPrivate(p);
+  const mine = visible.filter(isMine);
+  const others = visible.filter((p) => !isMine(p));
+  const hasSaved = follows.following.size > 0 || places.some(isPrivate);
   // Signed in with saved places: "Other places" can fold away.
   const foldable = follows.signedIn && hasSaved;
   const othersShown = !foldable || othersOpen;
@@ -259,6 +263,7 @@ export function Home() {
               ) : (
                 <ul className={GRID}>{others.map(card)}</ul>
               )}
+              <RequestPlaceLink />
             </div>
           </section>
         </>

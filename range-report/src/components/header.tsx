@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { ButtonLink, cx } from "@/components/ui";
 import { useAllSuggestions } from "@/lib/use-all-suggestions";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { usePlaceRequests } from "@/lib/use-place-requests";
 
 // Home listens for this to open its (possibly hidden) place list and scroll to it.
 export const SHOW_PLACES_EVENT = "range-report:show-places";
@@ -78,13 +79,16 @@ function AdminLink(props: { path: string; onNavigate: () => void; block?: boolea
   return <NavLink item={ADMIN} {...props} badge={<AdminCount />} />;
 }
 
+// Suggestions plus place requests waiting.
 function AdminCount() {
-  const { total, loaded } = useAllSuggestions();
-  if (!loaded || total === 0) return null;
+  const { total: suggestions, loaded } = useAllSuggestions();
+  const { requests } = usePlaceRequests();
+  const total = (loaded ? suggestions : 0) + requests.length;
+  if (total === 0) return null;
   return (
     <span className="ml-1.5 inline-block rounded-full border border-limited bg-limited-tint px-2 py-px align-middle text-label font-semibold text-limited">
       {total}
-      <span className="sr-only"> suggestion{total === 1 ? "" : "s"}</span>
+      <span className="sr-only"> waiting for an admin</span>
     </span>
   );
 }

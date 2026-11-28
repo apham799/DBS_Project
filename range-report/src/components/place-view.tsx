@@ -11,7 +11,7 @@ import { RangeMenu } from "@/components/range-menu";
 import { askToSignIn } from "@/components/sign-in-prompt";
 import { AdminStar, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, cx, Skeleton, TextLink, Toast } from "@/components/ui";
-import { placeById, placeKindLabel } from "@/data/places";
+import { placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
 import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
 import { useReportSource } from "@/lib/use-report-source";
@@ -266,10 +266,34 @@ function SummaryCard({ place, reports, now, source }: { place: Place; reports: R
   );
 }
 
-export function PlaceView({ placeId }: { placeId: string }) {
+// On a place a golfer asked for: who can see it, and what happens next.
+function AddedNote({ added }: { added: NonNullable<Place["added"]> }) {
+  const day = new Date(added.requestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" });
+  if (added.status === "approved")
+    return <p className="text-label font-normal text-muted">Added by a golfer and approved by Range Report. Its hours and areas come from the golfer who asked.</p>;
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border-2 border-dashed border-edge/40 bg-cream/60 px-4 py-3">
+      <p className="flex items-center gap-1.5 text-body font-semibold text-ink">
+        <svg viewBox="0 0 16 16" className="size-4" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3.5" y="7" width="9" height="6.5" rx="1.2" />
+          <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" />
+        </svg>
+        {added.status === "pending" ? "Only you can see this place" : "Not added to Range Report"}
+      </p>
+      <p className="text-body text-muted">
+        {added.status === "pending"
+          ? `You asked for it on ${day}, and a Range Report admin will review it. Until then, it and your reports here are visible only to you. Once it's approved, it's a place for everyone and your reports here are shared like any other.`
+          : `${added.adminNote ? `An admin said: “${added.adminNote}”. ` : ""}It stays here for you, private, so you can keep posting and logging your practice.`}
+      </p>
+    </div>
+  );
+}
+
+export function PlaceView({ place: basePlace }: { place: Place }) {
+  const placeId = basePlace.id;
   // The place, with what admins have set (confirmed statuses, hours) merged in.
   const { withConfig, reload: reloadConfig } = usePlaceConfig();
-  const place = useMemo(() => withConfig(placeById(placeId)!), [withConfig, placeId]);
+  const place = useMemo(() => withConfig(basePlace), [withConfig, basePlace]);
   const isAdmin = useIsAdmin();
   const { reports: allReports, loaded, error, live, retry, update } = useReports();
   const { db } = useDb();
@@ -410,12 +434,14 @@ export function PlaceView({ placeId }: { placeId: string }) {
             <h1 className="text-display">{place.name}</h1>
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-muted">
               <SettingBadge setting={settingOf(place)} />
-              <span>{place.neighborhood} · {placeKindLabel(place)} · {place.address}</span>
+              <span>{[place.neighborhood, placeKindLabel(place), place.address].filter(Boolean).join(" · ")}</span>
             </p>
           </div>
           {/* Shown to guests too: tapping it asks them to sign in (and follows once they have). */}
           <FollowButton following={follows.following.has(place.id)} name={place.name} onToggle={() => follows.toggle(place.id, place.name)} />
         </div>
+
+        {place.added && <AddedNote added={place.added} />}
 
         <div className="flex flex-wrap items-center gap-3">
           {ready ? <HoursBadge hours={status.hours} /> : <Skeleton className="h-7 w-40 rounded-full" />}

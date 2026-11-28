@@ -5,9 +5,8 @@ import { useState, type ReactNode } from "react";
 import { POSTED_KEY } from "@/components/place-view";
 import { StateIcon } from "@/components/status";
 import { Alert, Button, Card, cx, Spinner, TextLink } from "@/components/ui";
-import { placeById } from "@/data/places";
 import { useDb } from "@/lib/db";
-import type { Condition, Crowd } from "@/lib/types";
+import type { Condition, Crowd, Place } from "@/lib/types";
 
 // Public notes: short, and no links (the database checks both too).
 const PUBLIC_MAX = 280;
@@ -93,8 +92,7 @@ function Choice<T extends string>({
   );
 }
 
-export function ReportForm({ placeId }: { placeId: string }) {
-  const place = placeById(placeId)!;
+export function ReportForm({ place }: { place: Place }) {
   const router = useRouter();
   const { db, isLoaded, userId } = useDb();
   // Signed out, the form posts as a guest (the sign-in pop-up offered an account first).

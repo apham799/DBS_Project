@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { Alert, Button, ButtonLink, Card, Skeleton, TextLink } from "@/components/ui";
 import { ReportChips, SettingBadge } from "@/components/status";
-import { placeById, placeKindLabel } from "@/data/places";
+import { placeKindLabel } from "@/data/places";
+import { usePlaces } from "@/lib/use-places";
+import type { Place } from "@/lib/types";
 import { settingOf } from "@/lib/filters";
 import { useLog, type Changed, type LogEntry } from "@/lib/use-log";
 
@@ -21,8 +23,7 @@ const changedLabel: Record<Changed, string> = {
   no: "No change",
 };
 
-function Entry({ entry }: { entry: LogEntry }) {
-  const place = placeById(entry.placeId);
+function Entry({ entry, place }: { entry: LogEntry; place: Place | undefined }) {
   return (
     <li>
       <Card as="article" className="flex flex-col gap-3">
@@ -75,6 +76,7 @@ function Entry({ entry }: { entry: LogEntry }) {
 
 export function LogView() {
   const { state, retry } = useLog();
+  const { byId } = usePlaces();
 
   const heading = (
     <div className="flex flex-col gap-1">
@@ -141,7 +143,7 @@ export function LogView() {
           {/* One column, newest first: a log reads top to bottom by time, and
               two columns of different-height entries left holes beside the short ones. */}
           <ol className="flex flex-col gap-4">
-            {entries.map((e) => <Entry key={e.id} entry={e} />)}
+            {entries.map((e) => <Entry key={e.id} entry={e} place={byId(e.placeId)} />)}
           </ol>
         </>
       )}

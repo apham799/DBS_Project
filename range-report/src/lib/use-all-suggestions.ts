@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { places as basePlaces } from "@/data/places";
 import { counts } from "./report-visibility";
 import { effectiveNow } from "./status";
 import { suggestionsFor, type Suggestion } from "./suggestions";
 import type { Place } from "./types";
 import { useDismissed } from "./use-dismissed";
 import { usePlaceConfig } from "./use-place-config";
+import { usePlaces } from "./use-places";
 import { useReports } from "./use-reports";
 import { useNow } from "./use-weather";
 
@@ -20,6 +20,9 @@ export function useAllSuggestions() {
   const { reports: all, loaded: reportsLoaded, error } = useReports();
   const { withConfig, loaded: configLoaded, reload } = usePlaceConfig();
   const { isDismissed, dismiss } = useDismissed();
+  // Approved places only: a request still waiting is private to the golfer
+  // who asked (admins can't read its reports anyway).
+  const { places: allPlaces } = usePlaces();
   const clock = useNow();
 
   const reports = useMemo(() => all.filter(counts), [all]);
@@ -28,11 +31,12 @@ export function useAllSuggestions() {
 
   const groups = useMemo<PlaceSuggestions[]>(() => {
     if (!loaded || !now) return [];
-    return basePlaces
+    return allPlaces
+      .filter((p) => !p.added || p.added.status === "approved")
       .map(withConfig)
       .map((place) => ({ place, suggestions: suggestionsFor(place, reports, now).filter((s) => !isDismissed(place.id, s.key)) }))
       .filter((g) => g.suggestions.length > 0);
-  }, [loaded, now, withConfig, reports, isDismissed]);
+  }, [loaded, now, allPlaces, withConfig, reports, isDismissed]);
 
   const total = groups.reduce((n, g) => n + g.suggestions.length, 0);
   return { groups, total, loaded, error, now, dismiss, reload };

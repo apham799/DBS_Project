@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { places as basePlaces } from "@/data/places";
 import { bySource } from "./report-source";
 import { counts } from "./report-visibility";
 import { effectiveNow, placeStatus, type PlaceStatus } from "./status";
 import { usePlaceConfig } from "./use-place-config";
+import { usePlaces } from "./use-places";
 import { useReportSource } from "./use-report-source";
 import { useReports } from "./use-reports";
 import { useNow, useWeather } from "./use-weather";
@@ -20,7 +20,9 @@ export function usePlaceStatuses() {
   const reports = useMemo(() => bySource(allReports, source).filter(counts), [allReports, source]);
   const weather = useWeather();
   const { withConfig } = usePlaceConfig();
-  const places = useMemo(() => basePlaces.map(withConfig), [withConfig]);
+  // Built-in places, approved requests, and your own requests still waiting.
+  const { places: basePlaces } = usePlaces();
+  const places = useMemo(() => basePlaces.map(withConfig), [basePlaces, withConfig]);
   const clock = useNow();
   // Never behind the newest report (a slow device clock would hide it).
   const now = useMemo(() => clock && effectiveNow(clock, reports), [clock, reports]);

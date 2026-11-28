@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui";
 import { PlaceView } from "@/components/place-view";
+import { AddedPlaceRoute } from "@/components/added-place-route";
 import { placeById, places } from "@/data/places";
+import { isAddedId } from "@/lib/added-places";
 
 export function generateStaticParams() {
   return places.map((p) => ({ id: p.id }));
@@ -18,8 +20,11 @@ export async function generateMetadata({ params }: PageProps<"/places/[id]">): P
 // instant and only this part waits for the route params.
 async function Content({ params }: { params: PageProps<"/places/[id]">["params"] }) {
   const { id } = await params;
-  if (!placeById(id)) notFound();
-  return <PlaceView placeId={id} />;
+  const place = placeById(id);
+  if (place) return <PlaceView place={place} />;
+  // A place a golfer asked for: loaded in the browser, where we know who's asking.
+  if (isAddedId(id)) return <AddedPlaceRoute id={id} view="place" />;
+  notFound();
 }
 
 export default function Page({ params }: PageProps<"/places/[id]">) {

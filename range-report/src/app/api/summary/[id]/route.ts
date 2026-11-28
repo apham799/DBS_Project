@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { placeById } from "@/data/places";
+import { ADDED_PLACE_FIELDS, isAddedId, toPlace, type AddedPlaceRow } from "@/lib/added-places";
 import { aiSummary, aiSummaryEnabled, MAX_REPORTS, MIN_NOTES, reportsBlock } from "@/lib/ai-summary-server";
 import { bySource, isReportSource } from "@/lib/report-source";
 import { counts } from "@/lib/report-visibility";
 import { SUMMARY_DAYS } from "@/lib/summary";
-import type { Report } from "@/lib/types";
+import type { Place, Report } from "@/lib/types";
 
 // GET /api/summary/:placeId → the AI's short summary of the last 30 days of
 // reports at one place. Reads reports as a guest would (publishable key, the
@@ -34,7 +35,13 @@ const backoff = new Map<string, number>();
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/summary/[id]">) {
   const { id } = await ctx.params;
-  const place = placeById(id);
+  // A built-in place, or an approved one a golfer asked for (as a guest, the
+  // server can't see requests still waiting, which are private).
+  let place: Place | undefined = placeById(id);
+  if (!place && isAddedId(id)) {
+    const { data } = await db.from("added_places").select(ADDED_PLACE_FIELDS).eq("id", id).eq("status", "approved").maybeSingle();
+    if (data) place = toPlace(data as AddedPlaceRow, false);
+  }
   if (!place) return Response.json({ error: "Unknown place" }, { status: 404 });
   if (!aiSummaryEnabled()) return json({ status: "off" });
 

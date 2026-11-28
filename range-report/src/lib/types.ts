@@ -1,5 +1,6 @@
-// Shared shapes for places and reports. Places are reference data that ship in
-// the code (src/data/places.ts); reports live in Supabase.
+// Shared shapes for places and reports. Most places are reference data that
+// ship in the code (src/data/places.ts); places golfers asked for, and
+// reports, live in Supabase.
 
 export type AreaKind = "range" | "putting" | "chipping" | "bunker" | "bays";
 
@@ -52,6 +53,9 @@ export type Place = {
   seasons: SeasonRule[];
   confirmed?: ConfirmedRule[]; // from the database, merged in by the app
   hoursUpdated?: { note: string | null; updatedAt: string }; // set when an admin replaced the published hours
+  // Set for places golfers asked for (src/lib/added-places.ts). Until approved,
+  // only the golfer who asked (mine) can see it.
+  added?: { status: "pending" | "approved" | "rejected"; mine: boolean; adminNote: string | null; requestedAt: string };
 };
 
 // What a golfer reports, in three taps.
