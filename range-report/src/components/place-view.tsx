@@ -1,7 +1,7 @@
 "use client";
 
 import { Show } from "@clerk/nextjs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/home";
 import { AdminPanel } from "@/components/admin-panel";
 import { FacilityMap } from "@/components/facility-map";
@@ -10,7 +10,7 @@ import { ReportSourcePicker } from "@/components/place-filters";
 import { RangeMenu } from "@/components/range-menu";
 import { askToSignIn } from "@/components/sign-in-prompt";
 import { AdminStar, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
-import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
+import { Alert, Badge, Button, ButtonLink, Card, cx, Skeleton, TextLink, Toast } from "@/components/ui";
 import { placeById, placeKindLabel } from "@/data/places";
 import { settingOf } from "@/lib/filters";
 import { bySource, sourceNote, type ReportSource } from "@/lib/report-source";
@@ -144,25 +144,60 @@ function PostButton({ placeId, size = "lg", label = "Post a report" }: { placeId
 // many more reports are needed, and a button to post one.
 // What the nightly patterns job found in all of this place's reports (the
 // lines above only see the last 30 days). Shown once the job has run here.
+// Open or closed, remembered in this browser for every place (closed at first:
+// while all reports are recent, they mostly repeat the 30-day lines above).
+const PATTERNS_OPEN_KEY = "range-report:patterns-open";
+
 function Patterns({ place, now }: { place: Place; now: Date }) {
   const patterns = usePlacePatterns(place.id);
+  const [open, setOpenState] = useState(false);
+  const bodyId = useId();
+  useEffect(() => {
+    const t = setTimeout(() => localStorage.getItem(PATTERNS_OPEN_KEY) === "1" && setOpenState(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    localStorage.setItem(PATTERNS_OPEN_KEY, next ? "1" : "0");
+  };
   if (!patterns) return null;
   const lines = patternLines(patterns, place, now);
   return (
-    <div className="flex flex-col gap-1.5 border-t border-rule pt-3">
-      <h3 className="text-body font-semibold">Patterns</h3>
-      {lines.length > 0 ? (
-        <ul className="flex list-disc flex-col gap-1 pl-5 text-body">
-          {lines.map((l) => (
-            <li key={l.text}>
-              {l.text} <span className="text-label font-normal text-muted">· {l.basis}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-body text-muted">No clear patterns yet: each one needs at least 3 reports that agree.</p>
-      )}
-      <p className="text-label font-normal text-muted">{patternsFooter(patterns)}</p>
+    <div className="flex flex-col border-t border-rule pt-3">
+      <h3 className="text-body font-semibold">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen(!open)}
+          className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:border-ink/15 hover:bg-cream/40"
+        >
+          Patterns
+          <span className="text-label font-normal text-muted">{lines.length || "none yet"}</span>
+          <svg viewBox="0 0 16 16" className={cx("ml-auto size-4 text-muted transition-transform duration-300 motion-reduce:transition-none", open && "rotate-180")} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6 L8 10 L12 6" />
+          </svg>
+        </button>
+      </h3>
+      {/* Slides open like a place card's details; inert while closed. */}
+      <div className={cx("grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+        <div id={bodyId} className="min-h-0 overflow-hidden" inert={!open}>
+          <div className="flex flex-col gap-1.5 pt-1.5">
+            {lines.length > 0 ? (
+              <ul className="flex list-disc flex-col gap-1 pl-5 text-body">
+                {lines.map((l) => (
+                  <li key={l.text}>
+                    {l.text} <span className="text-label font-normal text-muted">· {l.basis}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-body text-muted">No clear patterns yet: each one needs at least 3 reports that agree.</p>
+            )}
+            <p className="text-label font-normal text-muted">{patternsFooter(patterns)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
