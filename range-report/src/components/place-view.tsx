@@ -6,7 +6,7 @@ import { LiveDot } from "@/components/home";
 import { AdminPanel } from "@/components/admin-panel";
 import { FacilityMap } from "@/components/facility-map";
 import { FollowButton } from "@/components/place-card";
-import { ReportSourcePicker } from "@/components/place-filters";
+import { Chip, ReportSourcePicker } from "@/components/place-filters";
 import { askToSignIn } from "@/components/sign-in-prompt";
 import { AdminStar, AreaDetails, crowdWord, GuestTag, HoursBadge, VoteButtons, MapKey, NoDataIcon, Progress, ReportChips, SettingBadge } from "@/components/status";
 import { Alert, Badge, Button, ButtonLink, Card, Skeleton, TextLink, Toast } from "@/components/ui";
@@ -27,12 +27,23 @@ import { patternLines, patternsFooter } from "@/lib/patterns";
 import { useAiSummary } from "@/lib/use-ai-summary";
 import { usePlacePatterns } from "@/lib/use-place-patterns";
 import { useFollows } from "@/lib/use-follows";
-import { useReports } from "@/lib/use-reports";
+import { toReport, useReports, type ReportRow } from "@/lib/use-reports";
+import { countLabel, emptyLabel, inRange, needsOlder, REPORT_RANGES, type ReportRange } from "@/lib/report-range";
+import { useOlderReports } from "@/lib/use-older-reports";
 import { useNow, useWeather } from "@/lib/use-weather";
 
 export const POSTED_KEY = "range-report:posted";
 
 const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", minute: "2-digit" });
+const dateFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const dateYearFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" });
+// "Sat 9:12 AM" this week; "Nov 17, 5:41 PM" further back; "Jun 1, 2025" in an earlier year.
+function whenPosted(iso: string, now: Date | null): string {
+  const d = new Date(iso);
+  if (!now || now.getTime() - d.getTime() < 6 * 86400_000) return timeFormat.format(d);
+  const year = (x: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric" }).format(x);
+  return (year(d) === year(now) ? dateFormat : dateYearFormat).format(d);
+}
 
 // One area's details, in a pop-up over the map. A native <dialog>: focus moves
 // in and back to the map when it closes; Esc, the X or a click outside close it.
@@ -226,27 +237,21 @@ export function PlaceView({ placeId }: { placeId: string }) {
   const isAdmin = useIsAdmin();
   const { reports: allReports, loaded, error, live, retry, update } = useReports();
   const { db } = useDb();
+  // How far back the Recent reports list goes (and the reports past the 30
+  // days the app keeps, loaded when "Past year" or "All time" is picked).
+  const [range, setRange] = useState<ReportRange>("month");
+  const older = useOlderReports(placeId, range);
+  const updateOlder = older.update;
   // After a vote, read that report again so its counts update even without Realtime.
   const refetch = useCallback(
     async (id: string) => {
       const { data } = await db.from("reports").select("id, place_id, created_at, place_open, areas, crowd, note, source, hidden_at, hidden_reason, up_votes, down_votes").eq("id", id).single();
-      if (data)
-        update({
-          id: data.id,
-          placeId: data.place_id,
-          createdAt: data.created_at,
-          placeOpen: data.place_open,
-          areas: data.areas ?? {},
-          crowd: data.crowd,
-          note: data.note,
-          source: data.source,
-          hiddenAt: data.hidden_at,
-          hiddenReason: data.hidden_reason,
-          upVotes: data.up_votes,
-          downVotes: data.down_votes,
-        });
+      if (!data) return;
+      const r = toReport(data as ReportRow);
+      update(r);
+      updateOlder(r);
     },
-    [db, update],
+    [db, update, updateOlder],
   );
   const votes = useVotes(refetch);
   const [showHidden, setShowHidden] = useState(false);
@@ -296,9 +301,21 @@ export function PlaceView({ placeId }: { placeId: string }) {
   const activeRules = (place.confirmed ?? []).filter((c) => today && c.startsOn <= today && (!c.endsOn || today <= c.endsOn));
   const ruleFor = (areaId: string) => activeRules.find((c) => c.areaId === areaId) ?? activeRules.find((c) => c.areaId === null);
   const areaName = (id: string | null) => (id === null ? "Whole place" : (place.areas.find((a) => a.id === id)?.label ?? id));
-  const placeReports = sourced.filter((r) => r.placeId === place.id).slice(0, 15);
-  const recent = placeReports.filter(counts).slice(0, 10);
-  const hiddenOnes = placeReports.filter((r) => !counts(r));
+  // The Recent reports list: this place, in the picked range, as "Reports
+  // from" says. The live 30 days win over the older copies (newer counts).
+  const listed = useMemo(() => {
+    if (!now) return [];
+    const mine = sourced.filter((r) => r.placeId === place.id);
+    const extra = needsOlder(range) ? bySource(older.reports, source).filter((r) => !mine.some((m) => m.id === r.id)) : [];
+    return [...mine, ...extra].filter((r) => inRange(r, range, now)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [sourced, older.reports, source, place.id, range, now]);
+  const counted = listed.filter(counts);
+  const hiddenOnes = listed.filter((r) => !counts(r));
+  // Ten at a time; back to ten when the range changes.
+  const [shownFor, setShownFor] = useState<{ range: ReportRange; n: number }>({ range: "month", n: 10 });
+  const shownN = shownFor.range === range ? shownFor.n : 10;
+  const recent = counted.slice(0, shownN);
+  const listLoading = !loaded || older.loading;
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lon}`;
 
   // One report in the list (a render function, not a component defined in
@@ -308,7 +325,7 @@ export function PlaceView({ placeId }: { placeId: string }) {
     return (
       <li key={r.id} className="flex flex-col gap-2 px-4 py-3">
         <p className="flex flex-wrap items-center gap-2 text-label text-muted">
-          {timeFormat.format(new Date(r.createdAt))} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
+          {whenPosted(r.createdAt, now)} · {now && ageLabel(now.getTime() - new Date(r.createdAt).getTime())}
           {r.source === "guest" && <GuestTag />}
         </p>
         {why && <p className="text-label font-semibold text-muted">{hiddenLabel(why)}</p>}
@@ -481,26 +498,57 @@ export function PlaceView({ placeId }: { placeId: string }) {
       </div>
 
       <section className="flex flex-col gap-3" aria-labelledby="recent">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 id="recent" className="text-heading">Recent reports</h2>
-          {/* The same reports as the map and summary: last 30 days, as "Reports from" says, hidden ones left out. */}
-          {loaded && recent30.length > 0 && (
-            <p className="text-body text-muted">
-              {recent30.length} in the last 30 days{recent30.length > recent.length ? `, newest ${recent.length} shown` : ""}
-            </p>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 id="recent" className="text-heading">Recent reports</h2>
+            {/* Hidden ones left out, as "Reports from" says, like the map and summary. */}
+            {!listLoading && counted.length > 0 && (
+              <p className="text-body text-muted" aria-live="polite">
+                {countLabel(counted.length, range)}
+                {older.capped ? "+" : ""}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Reports from how long ago">
+            {REPORT_RANGES.map((r) => (
+              <Chip key={r.id} on={range === r.id} onClick={() => setRange(r.id)}>
+                {r.label}
+              </Chip>
+            ))}
+          </div>
         </div>
-        {loaded && recent.length === 0 && (
-          <p className="text-body text-muted">No reports in the last 30 days. If you&apos;re here today, yours will be the first.</p>
+        {listLoading && loaded && (
+          <div role="status" className="flex flex-col gap-2">
+            <span className="sr-only">Loading older reports…</span>
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        )}
+        {!listLoading && counted.length === 0 && (
+          <p className="text-body text-muted">
+            {emptyLabel(range)} {range === "month" || range === "week" ? "If you're here today, yours will be the first." : ""}
+          </p>
         )}
         {votes.error && <Alert tone="error" title={votes.error} onDismiss={votes.clearError} />}
-        {recent.length > 0 && (
+        {!listLoading && recent.length > 0 && (
           <ol className="flex flex-col divide-y divide-rule rounded-lg border border-rule">
             {recent.map(reportItem)}
           </ol>
         )}
+        {!listLoading && counted.length > recent.length && (
+          <button
+            type="button"
+            onClick={() => setShownFor({ range, n: shownN + 10 })}
+            className="inline-flex w-fit items-center gap-1 rounded-sm text-label font-semibold text-green hover:underline"
+          >
+            Show {Math.min(10, counted.length - recent.length)} more ({recent.length} of {counted.length} shown)
+            <svg viewBox="0 0 16 16" className="size-4" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6 L8 10 L12 6" />
+            </svg>
+          </button>
+        )}
         {/* Like hidden comments: out of the way, never gone. */}
-        {hiddenOnes.length > 0 && (
+        {!listLoading && hiddenOnes.length > 0 && (
           <div className="flex flex-col gap-2">
             <button
               type="button"

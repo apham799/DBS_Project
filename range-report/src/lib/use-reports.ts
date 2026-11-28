@@ -16,9 +16,9 @@ import type { Condition, Crowd, Report } from "./types";
 
 const LOOKBACK_DAYS = 30;
 
-type Row = { id: string; place_id: string; created_at: string; place_open: boolean; areas: Record<string, Condition>; crowd: Crowd | null; note: string | null; source?: "account" | "guest"; hidden_at?: string | null; hidden_reason?: string | null; up_votes?: number; down_votes?: number };
+export type ReportRow = { id: string; place_id: string; created_at: string; place_open: boolean; areas: Record<string, Condition>; crowd: Crowd | null; note: string | null; source?: "account" | "guest"; hidden_at?: string | null; hidden_reason?: string | null; up_votes?: number; down_votes?: number };
 
-const toReport = (r: Row): Report => ({
+export const toReport = (r: ReportRow): Report => ({
   id: r.id,
   placeId: r.place_id,
   createdAt: r.created_at,
@@ -86,7 +86,7 @@ export function useReports() {
       return;
     }
     setError(null);
-    const snapshot = (data as Row[]).map(toReport);
+    const snapshot = (data as ReportRow[]).map(toReport);
     setReports((current) => merge(snapshot, current));
   }, [db]);
 
@@ -119,11 +119,11 @@ export function useReports() {
     const channel = db
       .channel(`reports-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "reports" }, (payload) => {
-        const row = payload.new as Row;
+        const row = payload.new as ReportRow;
         if (row?.id) add(toReport(row));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "reports" }, (payload) => {
-        const row = payload.new as Row;
+        const row = payload.new as ReportRow;
         if (row?.id) update(toReport(row));
       })
       .subscribe((s) => {

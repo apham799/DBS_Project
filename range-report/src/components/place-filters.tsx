@@ -10,7 +10,7 @@ import { setReportSource, useReportSource } from "@/lib/use-report-source";
 // match), indoor or outdoor, and open now. These are real buttons, so they
 // look like buttons (unlike the ratings, which are data).
 
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+export function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
